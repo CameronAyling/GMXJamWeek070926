@@ -1,0 +1,14 @@
+# gmx build artifacts
+*.wad
+*.yydebug
+*.bld-key
+
+# gmx debug daemon runtime scratch (logs, pids, socket, yydebug)
+.gmx/
+
+# gmx gxgames link state (per-machine `release` upload target)
+.gxgames.link.json
+
+# OS cruft
+.DS_Store
+Thumbs.db

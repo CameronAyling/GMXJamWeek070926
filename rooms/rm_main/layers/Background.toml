@@ -1,0 +1,7 @@
+#:schema ../../../.gm-schema/v1.json#layer
+
+kind = "background"
+depth = 100
+
+[background]
+colour = "#26262CFF"

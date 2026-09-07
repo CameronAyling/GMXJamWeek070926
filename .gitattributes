@@ -1,0 +1,2 @@
+# Normalise all text to LF on checkin (kills CRLF warnings cross-platform).
+* text=auto eol=lf

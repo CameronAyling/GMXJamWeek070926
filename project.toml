@@ -1,0 +1,6 @@
+#:schema .gm-schema/v1.json#project
+
+name = "fasterthanfuel"
+
+[room_order]
+order = ["rm_main"]

@@ -1,0 +1,17 @@
+{
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    "workbench.editor.customLabels.enabled": true,
+    "workbench.editor.customLabels.patterns": {
+        "**/project.toml": "Project settings",
+        "**/{texture_groups,audio_groups,notes}/*": "${filename}",
+        "**/{rooms,sequences,particle_systems}/*/{layers,tracks,emitters}/*": "${dirname(1)}",
+        "**/{sprites,objects,rooms,sounds,fonts,shaders,tilesets,paths,scripts,sequences,animation_curves,particle_systems}/*/*": "${dirname}",
+        "**/prefabs/*/{texture_groups,audio_groups,notes}/*": "${dirname(1)}::${filename}",
+        "**/prefabs/*/{rooms,sequences,particle_systems}/*/{layers,tracks,emitters}/*": "${dirname(3)}::${dirname(1)}",
+        "**/prefabs/*/{sprites,objects,rooms,sounds,fonts,shaders,tilesets,paths,scripts,sequences,animation_curves,particle_systems}/*/*": "${dirname(2)}::${dirname}",
+        "**/prefabs/*/.cache/{texture_groups,audio_groups,notes}/*": "${dirname(2)}::${filename}",
+        "**/prefabs/*/.cache/{rooms,sequences,particle_systems}/*/{layers,tracks,emitters}/*": "${dirname(4)}::${dirname(1)}",
+        "**/prefabs/*/.cache/{sprites,objects,rooms,sounds,fonts,shaders,tilesets,paths,scripts,sequences,animation_curves,particle_systems}/*/*": "${dirname(3)}::${dirname}"
+    }
+}

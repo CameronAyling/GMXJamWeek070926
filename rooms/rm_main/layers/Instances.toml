@@ -1,0 +1,10 @@
+#:schema ../../../.gm-schema/v1.json#layer
+
+kind = "instances"
+depth = 0
+
+[[entries]]
+id = "inst_rm_main_obj_main_0"
+object = "obj_main"
+x = 0.0
+y = 0.0
