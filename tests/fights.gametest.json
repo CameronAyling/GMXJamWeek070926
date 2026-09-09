@@ -1,0 +1,73 @@
+{
+  "seed": 11,
+  "fps": 60,
+  "total_frames": 3000,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed":   { "gml": "random_set_seed(11); return true;" },
+    "boot":     { "gml": "run_new(); global.run.scrap = 900; return true;" },
+    "loadout":  { "gml": "var c = global.run.car; while (array_length(c.facs) > 0) car_remove(c, 0); while (car_can_upgrade_bay(c)) car_upgrade_bay(c); car_attach_trailer(c); var want = [\"reac_3\", \"las_2\", \"flm_1\", \"acd_1\", \"hrp_1\", \"drv_2\", \"rep_1\", \"plt_1\"]; var got = 0; for (var i = 0; i < array_length(want); i++) { var cells = fac(want[i]).cells; var spot = car_find_space(c, cells); if (is_array(spot)) { car_place(c, want[i], spot[0], spot[1], 0); got += 1; } } return got;" },
+
+    "fight_r": { "gml": "combat_begin(\"robots\",  false, false); return true;" },
+    "fight_b": { "gml": "combat_begin(\"bandits\", false, false); return true;" },
+    "fight_c": { "gml": "combat_begin(\"corps\",   false, false); return true;" },
+    "fight_i": { "gml": "combat_begin(\"insects\", false, false); return true;" },
+    "fight_boss": { "gml": "combat_begin(\"corps\", false, true); return true;" },
+
+    "resolved":   { "gml": "return global.cb.over != \"\";" },
+    "no_shots_stuck": { "gml": "return array_length(global.cb.shots) < 300;" },
+
+    "nuke_enemies": { "gml": "for (var i = 0; i < array_length(global.cb.enemies); i++) global.cb.enemies[i].hull = 0; return true;" },
+    "nuke_player":  { "gml": "global.cb.player.hull = 0; return true;" },
+
+    "drone_spam": { "gml": "var n = array_length(global.cb.player.facs); for (var i = 0; i < n; i++) { combat_toggle_drone(i); combat_toggle_drone(i); combat_toggle_drone(i); } return n;" },
+    "power_spam": { "gml": "var n = array_length(global.cb.player.facs); for (var i = 0; i < n; i++) { combat_toggle_power(i); combat_toggle_power(i); } return n;" },
+    "target_spam": { "gml": "var n = 0; for (var e = 0; e < array_length(global.cb.enemies); e++) { var t = global.cb.enemies[e]; for (var f = 0; f < array_length(t.facs); f++) { global.cb.sel_weapon = -1; combat_set_target(e, f); n += 1; } } return n;" },
+
+    "exit_now": { "gml": "combat_exit(); return true;" },
+    "in_map":   { "gml": "return (room == rm_map);" },
+    "in_over":  { "gml": "return (room == rm_gameover);" }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot", "loadout"] },
+
+    { "frame": 10,   "code": ["fight_r"] },
+    { "frame": 40,   "code": ["target_spam", "drone_spam", "power_spam"] },
+    { "frame": 300,  "assert": { "id": "no_shots_stuck", "name": "robot fight: projectiles keep clearing", "expect": true } },
+    { "frame": 560,  "code": ["nuke_enemies"] },
+    { "frame": 580,  "assert": { "id": "resolved", "name": "robot fight resolves when the enemy dies", "expect": true } },
+    { "frame": 600,  "code": ["exit_now"] },
+    { "frame": 640,  "assert": { "id": "in_map", "name": "robot fight hands back to the atlas", "expect": true } },
+
+    { "frame": 660,  "code": ["fight_b"] },
+    { "frame": 700,  "code": ["target_spam", "drone_spam"] },
+    { "frame": 1000, "assert": { "id": "no_shots_stuck", "name": "bandit pack: projectiles keep clearing", "expect": true } },
+    { "frame": 1010, "code": ["nuke_enemies"] },
+    { "frame": 1030, "assert": { "id": "resolved", "name": "killing the whole pack ends the fight", "expect": true } },
+    { "frame": 1050, "code": ["exit_now"] },
+
+    { "frame": 1100, "code": ["fight_c"] },
+    { "frame": 1140, "code": ["target_spam"] },
+    { "frame": 1600, "assert": { "id": "no_shots_stuck", "name": "corp fight: projectiles keep clearing", "expect": true } },
+    { "frame": 1620, "code": ["nuke_enemies"] },
+    { "frame": 1650, "code": ["exit_now"] },
+
+    { "frame": 1700, "code": ["fight_i"] },
+    { "frame": 1740, "code": ["target_spam", "power_spam"] },
+    { "frame": 2100, "assert": { "id": "no_shots_stuck", "name": "insect fight: projectiles keep clearing", "expect": true } },
+    { "frame": 2120, "code": ["nuke_enemies"] },
+    { "frame": 2150, "code": ["exit_now"] },
+
+    { "frame": 2200, "code": ["fight_boss"] },
+    { "frame": 2240, "code": ["target_spam", "drone_spam", "power_spam"] },
+    { "frame": 2600, "screenshot": "boss_long.png" },
+    { "frame": 2620, "code": ["nuke_player"] },
+    { "frame": 2650, "assert": { "id": "resolved", "name": "losing to the boss resolves", "expect": true } },
+    { "frame": 2680, "code": ["exit_now"] },
+    { "frame": 2740, "assert": { "id": "in_over", "name": "dying goes to the game over screen", "expect": true } },
+    { "frame": 2800, "screenshot": "death.png" }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "seed": 53,
+  "fps": 60,
+  "total_frames": 2250,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(53); return true;" },
+    "boot":   { "gml": "run_new(); return true;" },
+
+    "dominant_in_sector_1": {
+      "gml": "var c = 0; for (var n = 0; n < 1000; n++) { if (map_pick_faction(1) == \"bandits\") c += 1; } return (c > 500 && c < 700);"
+    },
+    "present_in_sector_2": {
+      "gml": "for (var n = 0; n < 800; n++) { if (map_pick_faction(2) == \"bandits\") return true; } return false;"
+    },
+    "never_in_sector_3": {
+      "gml": "for (var n = 0; n < 800; n++) { if (map_pick_faction(3) == \"bandits\") return false; } return true;"
+    },
+    "sector_3_maps_clean": {
+      "gml": "for (var m = 0; m < 40; m++) { global.run.sector = 3; map_generate(); var nd = global.run.map.nodes; for (var i = 0; i < array_length(nd); i++) { if (nd[i].faction == \"bandits\") return false; } } return true;"
+    },
+
+    "fight_b": { "gml": "combat_begin(\"bandits\", false, false); return true;" },
+    "fight_i": { "gml": "combat_begin(\"insects\", false, false); return true;" },
+
+    "calm": { "gml": "global.cb.player.hull = 900; var pc = global.cb.player; for (var i = 0; i < array_length(pc.facs); i++) { if (fac(pc.facs[i].def).charge > 0) pc.facs[i].hp = 0; } for (var e = 0; e < array_length(global.cb.enemies); e++) { var t = global.cb.enemies[e]; for (var i = 0; i < array_length(t.facs); i++) { if (fac(t.facs[i].def).charge > 0) t.facs[i].hp = 0; } } return true;" },
+
+    "flagged":  { "gml": "for (var e = 0; e < array_length(global.cb.enemies); e++) { if (!global.cb.enemies[e].no_repair) return false; } return true;" },
+    "not_flagged": { "gml": "return !global.cb.enemies[0].no_repair;" },
+
+    "wound":     { "gml": "var f = global.cb.enemies[0].facs[0]; f.hp = 1; return (f.hp_max > 3);" },
+    "wound_hp":  { "gml": "return global.cb.enemies[0].facs[0].hp;" },
+
+    "fit_shield":  { "gml": "var c = global.run.car; while (array_length(c.facs) > 0) car_remove(c, 0); var want = [\"reac_2\", \"shd_1\"]; for (var i = 0; i < 2; i++) { var s = car_find_space(c, fac(want[i]).cells); if (is_array(s)) car_place(c, want[i], s[0], s[1], 0); } return array_length(c.facs);" },
+    "drop_shield": { "gml": "global.cb.player.shield_cur = 0; global.cb.player.shield_timer = 0; return car_shield_max(global.cb.player);" },
+    "lock_player": { "gml": "global.cb.player.no_repair = true; return true;" },
+    "free_player": { "gml": "global.cb.player.no_repair = false; global.cb.player.shield_timer = 0; return true;" },
+    "shield_now":  { "gml": "return global.cb.player.shield_cur;" }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["boot"] },
+
+    { "frame": 6,  "assert": { "id": "dominant_in_sector_1", "name": "the Rust Kings own sector 1",        "expect": true } },
+    { "frame": 8,  "assert": { "id": "present_in_sector_2",  "name": "they still range into sector 2",     "expect": true } },
+    { "frame": 10, "assert": { "id": "never_in_sector_3",    "name": "and are gone by sector 3",           "expect": true } },
+    { "frame": 12, "assert": { "id": "sector_3_maps_clean",  "name": "40 generated sector-3 atlases contain none", "expect": true } },
+
+    { "frame": 20, "code":   ["boot", "fight_b"] },
+    { "frame": 44, "code":   ["calm"] },
+    { "frame": 48, "assert": { "id": "flagged", "name": "every Rust King is flagged no-repair", "expect": true } },
+    { "frame": 52, "assert": { "id": "wound",   "name": "wound one of them",                    "expect": true } },
+    { "frame": 400, "assert": { "id": "wound_hp", "name": "six seconds on, the damage has not healed", "expect": 1, "tolerance": 0 } },
+
+    { "frame": 430, "code":   ["boot", "fight_i"] },
+    { "frame": 454, "code":   ["calm"] },
+    { "frame": 458, "assert": { "id": "not_flagged", "name": "the Chitin are not flagged", "expect": true } },
+    { "frame": 462, "assert": { "id": "wound",       "name": "wound one of them too",      "expect": true } },
+    { "frame": 800, "assert": { "id": "wound_hp",    "name": "and by contrast the Chitin heal it back", "expect": 4, "tolerance": 3 } },
+
+    { "frame": 840,  "code":   ["boot", "fit_shield"] },
+    { "frame": 850,  "code":   ["fight_b"] },
+    { "frame": 880,  "code":   ["calm"] },
+    { "frame": 884,  "assert": { "id": "drop_shield", "name": "the player is carrying one shield layer", "expect": 1, "tolerance": 0 } },
+    { "frame": 890,  "code":   ["lock_player"] },
+    { "frame": 1420, "assert": { "id": "shield_now", "name": "a no-repair hull never recharges its shield", "expect": 0, "tolerance": 0 } },
+    { "frame": 1430, "code":   ["free_player"] },
+    { "frame": 2200, "assert": { "id": "shield_now", "name": "clear the flag and the shield comes back",   "expect": 1, "tolerance": 0 } }
+  ]
+}

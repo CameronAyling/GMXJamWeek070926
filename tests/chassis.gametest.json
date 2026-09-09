@@ -1,0 +1,129 @@
+{
+  "seed": 83,
+  "fps": 60,
+  "total_frames": 700,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(83); return true;" },
+    "boot":   { "gml": "run_new(); return true;" },
+
+    "start_shape": { "gml": "var c = global.run.car; return (c.gw == 3 && c.gh == 3 && car_cell_count(c) == 9 && c.bays == 0 && !c.trailer);" },
+    "max_bays":    { "gml": "return car_max_bays(global.run.car);" },
+
+    "bay":       { "gml": "return car_upgrade_bay(global.run.car);" },
+    "cells":     { "gml": "return car_cell_count(global.run.car);" },
+    "width":     { "gml": "return global.run.car.gw;" },
+    "bays":      { "gml": "return global.run.car.bays;" },
+    "can_bay":   { "gml": "return car_can_upgrade_bay(global.run.car);" },
+    "can_trail": { "gml": "return car_can_attach_trailer(global.run.car);" },
+    "trail":     { "gml": "return car_attach_trailer(global.run.car);" },
+    "has_trail": { "gml": "return global.run.car.trailer;" },
+
+    "facs":   { "gml": "return array_length(global.run.car.facs);" },
+
+    "placement_valid": {
+      "gml": "var c = global.run.car; for (var i = 0; i < array_length(c.facs); i++) { var f = c.facs[i]; for (var k = 0; k < array_length(f.cells); k++) { var cx = f.ox + f.cells[k][0]; var cy = f.oy + f.cells[k][1]; if (!car_cell_exists(c, cx, cy)) return false; if (car_at(c, cx, cy) != i) return false; } } return true;"
+    },
+
+    "bay_is_contiguous": {
+      "gml": "var c = global.run.car; if (c.bays == 0) return true; var col = []; for (var gy = 0; gy < c.gh; gy++) if (car_cell_exists(c, 0, gy)) array_push(col, gy); if (array_length(col) != c.bays) return false; for (var i = 1; i < array_length(col); i++) if (col[i] != col[i-1] + 1) return false; return true;"
+    },
+
+    "holes_reject_kit": {
+      "gml": "var c = global.run.car; var holes = 0; for (var gy = 0; gy < c.gh; gy++) { for (var gx = 0; gx < c.gw; gx++) { if (car_cell_exists(c, gx, gy)) continue; holes += 1; if (car_can_place(c, [[0,0]], gx, gy)) return -1; } } return holes;"
+    },
+
+    "trailer_block": {
+      "gml": "var c = global.run.car; if (!c.trailer) return false; var n = 0; for (var gy = 0; gy < c.gh; gy++) { for (var gx = 0; gx < 2; gx++) if (car_cell_exists(c, gx, gy)) n += 1; } return (n == 4 && car_body_x0(c) == 2);"
+    },
+    "trailer_usable": {
+      "gml": "var c = global.run.car; var placed = 0; for (var gy = 0; gy < c.gh; gy++) { if (car_cell_exists(c, 0, gy) && car_at(c, 0, gy) == -1) { if (car_place(c, \"plt_1\", 0, gy, 0) != -1) placed += 1; } } return placed;"
+    },
+    "no_second_trailer": { "gml": "return car_attach_trailer(global.run.car);" },
+    "no_extra_bay":      { "gml": "return car_upgrade_bay(global.run.car);" },
+
+    "fight":    { "gml": "combat_begin(\"bandits\", false, false); return true;" },
+    "win_it":   { "gml": "for (var e = 0; e < array_length(global.cb.enemies); e++) global.cb.enemies[e].hull = 0; return true;" },
+    "bay_due":  { "gml": "return global.cb.bay_due;" },
+    "cash_out": { "gml": "combat_exit(); return true;" },
+    "flee_it":  { "gml": "global.cb.over = \"fled\"; combat_exit(); return true;" },
+
+    "bay_prices": {
+      "gml": "var c = global.run.car; if (bay_cost(c) != 160) return false; car_upgrade_bay(c); if (bay_cost(c) != 230) return false; car_upgrade_bay(c); if (bay_cost(c) != 300) return false; car_upgrade_bay(c); return !car_can_upgrade_bay(c);"
+    },
+    "buying_beats_waiting_costs_more": {
+      "gml": "var c = global.run.car; var total = 0; while (car_can_upgrade_bay(c)) { total += bay_cost(c); car_upgrade_bay(c); } return (total > run_combat_reward(false, false) * 8 && total < trailer_cost() * 3);"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["boot"] },
+
+    { "frame": 4,  "assert": { "id": "start_shape",     "name": "the rig starts 3x3 with nine cells", "expect": true } },
+    { "frame": 5,  "assert": { "id": "max_bays",        "name": "a 3-tall column takes three bays",   "expect": 3, "tolerance": 0 } },
+    { "frame": 6,  "assert": { "id": "facs",            "name": "carrying four facilities",           "expect": 4, "tolerance": 0 } },
+    { "frame": 7,  "assert": { "id": "placement_valid", "name": "all of it correctly placed",         "expect": true } },
+
+    { "frame": 10, "assert": { "id": "bay",             "name": "bay 1 welds on",                    "expect": true } },
+    { "frame": 11, "assert": { "id": "width",           "name": "which opens a fourth column",       "expect": 4, "tolerance": 0 } },
+    { "frame": 12, "assert": { "id": "cells",           "name": "for ten cells, not twelve",         "expect": 10, "tolerance": 0 } },
+    { "frame": 13, "assert": { "id": "facs",            "name": "nothing was lost in the shuffle",   "expect": 4, "tolerance": 0 } },
+    { "frame": 14, "assert": { "id": "placement_valid", "name": "and everything shifted with it",    "expect": true } },
+    { "frame": 15, "assert": { "id": "holes_reject_kit","name": "the two unbuilt cells reject kit",  "expect": 2, "tolerance": 0 } },
+
+    { "frame": 20, "assert": { "id": "bay",               "name": "bay 2 welds on",                 "expect": true } },
+    { "frame": 21, "assert": { "id": "cells",             "name": "eleven cells",                   "expect": 11, "tolerance": 0 } },
+    { "frame": 22, "assert": { "id": "bay_is_contiguous", "name": "and the bay grows as one piece", "expect": true } },
+
+    { "frame": 30, "assert": { "id": "bay",             "name": "bay 3 completes the column",     "expect": true } },
+    { "frame": 31, "assert": { "id": "cells",           "name": "a full twelve cells",            "expect": 12, "tolerance": 0 } },
+    { "frame": 32, "assert": { "id": "width",           "name": "the rig is now 4 wide",          "expect": 4, "tolerance": 0 } },
+    { "frame": 33, "assert": { "id": "placement_valid", "name": "everything still correctly placed", "expect": true } },
+    { "frame": 34, "assert": { "id": "can_bay",         "name": "there is no fourth bay",         "expect": false } },
+    { "frame": 35, "assert": { "id": "no_extra_bay",    "name": "and asking for one is refused",  "expect": false } },
+
+    { "frame": 50, "assert": { "id": "can_trail",       "name": "but a trailer is now available",  "expect": true } },
+    { "frame": 52, "assert": { "id": "trail",           "name": "hitch it on",                     "expect": true } },
+    { "frame": 53, "assert": { "id": "has_trail",       "name": "the rig is articulated",          "expect": true } },
+    { "frame": 54, "assert": { "id": "width",           "name": "six columns wide overall",        "expect": 6, "tolerance": 0 } },
+    { "frame": 55, "assert": { "id": "cells",           "name": "sixteen cells all told",          "expect": 16, "tolerance": 0 } },
+    { "frame": 56, "assert": { "id": "trailer_block",   "name": "the trailer is a 2x2 behind the body", "expect": true } },
+    { "frame": 57, "assert": { "id": "placement_valid", "name": "and the car shifted cleanly again",    "expect": true } },
+    { "frame": 58, "assert": { "id": "no_second_trailer", "name": "you only get the one trailer",       "expect": false } },
+    { "frame": 60, "assert": { "id": "trailer_usable",  "name": "a 4-cell plate fits in the trailer",   "expect": 1, "tolerance": 0 } },
+    { "frame": 62, "assert": { "id": "placement_valid", "name": "including what you put in it",         "expect": true } },
+
+    { "frame": 100, "code":   ["boot"] },
+    { "frame": 104, "assert": { "id": "cells",   "name": "fresh run, nine cells", "expect": 9, "tolerance": 0 } },
+
+    { "frame": 120, "code":   ["fight"] },
+    { "frame": 160, "code":   ["win_it"] },
+    { "frame": 190, "assert": { "id": "bay_due", "name": "a win earns a bay",       "expect": true } },
+    { "frame": 200, "code":   ["cash_out"] },
+    { "frame": 260, "assert": { "id": "cells",   "name": "and it is welded on for free", "expect": 10, "tolerance": 0 } },
+    { "frame": 262, "assert": { "id": "bays",    "name": "one bay banked",          "expect": 1, "tolerance": 0 } },
+    { "frame": 264, "assert": { "id": "placement_valid", "name": "kit survived the win", "expect": true } },
+
+    { "frame": 300, "code":   ["fight"] },
+    { "frame": 340, "code":   ["flee_it"] },
+    { "frame": 400, "assert": { "id": "cells",   "name": "running away earns nothing", "expect": 10, "tolerance": 0 } },
+
+    { "frame": 420, "code":   ["fight"] },
+    { "frame": 440, "code":   ["win_it"] },
+    { "frame": 470, "code":   ["cash_out"] },
+    { "frame": 520, "code":   ["fight"] },
+    { "frame": 540, "code":   ["win_it"] },
+    { "frame": 555, "assert": { "id": "bay_due", "name": "the third win still owes a bay", "expect": true } },
+    { "frame": 570, "code":   ["cash_out"] },
+    { "frame": 620, "assert": { "id": "cells",   "name": "three wins fill the column to twelve", "expect": 12, "tolerance": 0 } },
+    { "frame": 622, "assert": { "id": "can_bay", "name": "and wins stop granting bays after that", "expect": false } },
+    { "frame": 624, "assert": { "id": "can_trail", "name": "the trailer becomes buyable", "expect": true } },
+
+    { "frame": 650, "code":   ["boot"] },
+    { "frame": 654, "assert": { "id": "bay_prices", "name": "bays cost 160 / 230 / 300 to buy", "expect": true } },
+    { "frame": 660, "code":   ["boot"] },
+    { "frame": 664, "assert": { "id": "buying_beats_waiting_costs_more", "name": "buying the lot is a real premium over winning them", "expect": true } }
+  ]
+}

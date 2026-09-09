@@ -1,0 +1,58 @@
+{
+  "seed": 67,
+  "fps": 60,
+  "total_frames": 900,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(67); return true;" },
+    "boot":   { "gml": "run_new(); return true;" },
+
+    "always_shielded": {
+      "gml": "for (var n = 0; n < 120; n++) { var d = 1 + (n mod 12) * 0.12; var g = enemy_group(\"robots\", d, false, false); var h = g[0]; if (car_shield_max(h) < 1) return false; } return true;"
+    },
+    "shield_fits_grid": {
+      "gml": "for (var n = 0; n < 120; n++) { var d = 1 + (n mod 12) * 0.12; var g = enemy_group(\"robots\", d, false, false); var h = g[0]; if (h.gw != 3 || h.gh != 3) return false; var used = 0; for (var i = 0; i < array_length(h.facs); i++) used += array_length(h.facs[i].cells); if (used > 9) return false; } return true;"
+    },
+    "never_plated": {
+      "gml": "for (var n = 0; n < 120; n++) { var d = 1 + (n mod 12) * 0.12; var g = enemy_group(\"robots\", d, false, false); for (var c = 0; c < array_length(g); c++) { if (car_armour(g[c]) != 0) return false; } } return true;"
+    },
+    "keeps_teeth": {
+      "gml": "var armed = 0; for (var n = 0; n < 120; n++) { var d = 1 + (n mod 12) * 0.12; var g = enemy_group(\"robots\", d, false, false); var h = g[0]; for (var i = 0; i < array_length(h.facs); i++) { if (fac(h.facs[i].def).charge > 0) { armed += 1; break; } } } return armed;"
+    },
+    "power_balanced": {
+      "gml": "for (var n = 0; n < 120; n++) { var d = 1 + (n mod 12) * 0.12; var g = enemy_group(\"robots\", d, false, false); var h = g[0]; if (car_power_use(h) > car_power_gen(h)) return false; } return true;"
+    },
+
+    "thinnest_hull": {
+      "gml": "var r = enemy_group(\"robots\", 1.5, false, false)[0]; var c = enemy_group(\"corps\", 1.5, false, false)[0]; var i = enemy_group(\"insects\", 1.5, false, false)[0]; return (r.hull < c.hull && r.hull < i.hull);"
+    },
+
+    "fight_r":      { "gml": "combat_begin(\"robots\", false, false); return true;" },
+    "hold_fire":    { "gml": "var pc = global.cb.player; pc.hull = 900; for (var i = 0; i < array_length(pc.facs); i++) { if (fac(pc.facs[i].def).charge > 0) pc.facs[i].hp = 0; } return true;" },
+    "shield_up":    { "gml": "return (global.cb.enemies[0].shield_cur >= 1);" },
+    "shield_eats":  { "gml": "var e = global.cb.enemies[0]; var before = e.shield_cur; e.shield_cur = max(0, e.shield_cur - 1); return (before > e.shield_cur);" },
+    "shield_backs": { "gml": "return (global.cb.enemies[0].shield_cur >= 1);" },
+    "drones_bare":  { "gml": "var e = global.cb.enemies; for (var i = 1; i < array_length(e); i++) { if (car_shield_max(e[i]) != 0) return false; } return true;" }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["boot"] },
+
+    { "frame": 6,  "assert": { "id": "always_shielded",  "name": "120 haulers across the difficulty range all carry a shield", "expect": true } },
+    { "frame": 8,  "assert": { "id": "shield_fits_grid", "name": "and still fit their 3x3",                    "expect": true } },
+    { "frame": 10, "assert": { "id": "never_plated",     "name": "no robot carries any armour plate",          "expect": true } },
+    { "frame": 12, "assert": { "id": "keeps_teeth",      "name": "and every one still has a working weapon",   "expect": 120, "tolerance": 0 } },
+    { "frame": 14, "assert": { "id": "power_balanced",   "name": "none of them are over their reactor budget", "expect": true } },
+    { "frame": 16, "assert": { "id": "thinnest_hull",    "name": "the hauler has the thinnest hull on the road", "expect": true } },
+
+    { "frame": 30,  "code":   ["boot", "fight_r"] },
+    { "frame": 50,  "code":   ["hold_fire"] },
+    { "frame": 60,  "assert": { "id": "shield_up",    "name": "a fight starts with the hauler's field up", "expect": true } },
+    { "frame": 62,  "assert": { "id": "drones_bare",  "name": "the drones get no shield of their own",     "expect": true } },
+    { "frame": 70,  "assert": { "id": "shield_eats",  "name": "the field absorbs a hit",                   "expect": true } },
+    { "frame": 400, "assert": { "id": "shield_up",    "name": "and stays down for a good while",           "expect": false } },
+    { "frame": 850, "assert": { "id": "shield_backs", "name": "then recharges — robots do repair",         "expect": true } }
+  ]
+}

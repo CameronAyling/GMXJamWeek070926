@@ -1,0 +1,58 @@
+{
+  "seed": 101,
+  "fps": 60,
+  "total_frames": 240,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(101); return true;" },
+
+    "_comment": { "gml": "return true;" },
+
+    "run_matrix": {
+      "gml": "var kinds = [\"bandits\", \"robots\", \"corps\", \"insects\"]; var diffs = [0.95, 1.40, 1.90]; var trials = 14; global.bw = array_create(12, 0); global.bn = array_create(12, 0); global.bt = array_create(12, 0); global.bh = array_create(12, 0); global.be = array_create(12, 0); global.bstall = 0; for (var s = 0; s < 3; s++) { for (var f = 0; f < 4; f++) { for (var t = 0; t < trials; t++) { run_new(); var pc = global.run.car; while (array_length(pc.facs) > 0) car_remove(pc, 0); var want; if (s == 0) { want = [\"reac_1\", \"las_1\", \"riv_1\", \"drv_1\"]; } else if (s == 1) { car_upgrade_bay(pc); car_upgrade_bay(pc); want = [\"reac_2\", \"las_2\", \"riv_1\", \"drv_1\", \"shd_1\", \"rep_1\"]; } else { while (car_can_upgrade_bay(pc)) car_upgrade_bay(pc); car_attach_trailer(pc); want = [\"reac_3\", \"las_3\", \"riv_2\", \"drv_2\", \"shd_1\", \"rep_1\", \"tgt_1\"]; } for (var w = 0; w < array_length(want); w++) { var sp = car_find_space(pc, fac(want[w]).cells); if (is_array(sp)) car_place(pc, want[w], sp[0], sp[1], 0); } global.combat_ctx = { faction: kinds[f], elite: false, boss: false, diff: diffs[s] }; combat_init(); var g = 0; while (global.cb.over == \"\" && g < 9000) { if (g % 20 == 0) { var dpc = global.cb.player; for (var dq = 0; dq < array_length(global.cb.drones); dq++) { var dr = global.cb.drones[dq]; if (dr.fac >= 0 && dr.fac < array_length(dpc.facs)) { var df = dpc.facs[dr.fac]; if (df.st.fire <= 0 && df.hp >= df.hp_max) dr.fac = -1; } if (dr.fac == -1) { var bi = -1; var bs = 0; for (var dj = 0; dj < array_length(dpc.facs); dj++) { var d2 = dpc.facs[dj]; var sc = (d2.hp_max - d2.hp) + ((d2.st.fire > 0) ? 100 : 0); var taken = false; for (var dk = 0; dk < array_length(global.cb.drones); dk++) if (global.cb.drones[dk].fac == dj) taken = true; if (!taken && sc > bs) { bs = sc; bi = dj; } } if (bi >= 0) dr.fac = bi; } } } combat_update(1/60); g += 1; } var idx = s * 4 + f; global.bn[idx] += 1; global.bt[idx] += global.cb.time; if (global.cb.over == \"\") global.bstall += 1; var eh = 0; var em = 0; for (var e = 0; e < array_length(global.cb.enemies); e++) { eh += max(0, global.cb.enemies[e].hull); em += global.cb.enemies[e].hull_max; } global.be[idx] += eh / max(1, em); if (global.cb.over == \"win\") { global.bw[idx] += 1; global.bh[idx] += global.cb.player.hull / max(1, global.cb.player.hull_max); } } } } return 1;"
+    },
+
+    "wr_s1": { "gml": "var w = 0; var n = 0; for (var i = 0; i < 3; i++) { w += global.bw[i]; n += global.bn[i]; } return round(w / max(1, n) * 100);" },
+    "wr_s2": { "gml": "var w = 0; var n = 0; for (var i = 4; i < 8; i++) { w += global.bw[i]; n += global.bn[i]; } return round(w / max(1, n) * 100);" },
+    "wr_s3": { "gml": "var w = 0; var n = 0; for (var i = 9; i < 12; i++) { w += global.bw[i]; n += global.bn[i]; } return round(w / max(1, n) * 100);" },
+
+    "wr_bandits": { "gml": "var w = global.bw[0] + global.bw[4]; var n = global.bn[0] + global.bn[4]; return round(w / max(1, n) * 100);" },
+    "wr_robots":  { "gml": "var w = 0; var n = 0; for (var s = 0; s < 3; s++) { w += global.bw[s*4+1]; n += global.bn[s*4+1]; } return round(w / max(1, n) * 100);" },
+    "wr_corps":   { "gml": "var w = 0; var n = 0; for (var s = 0; s < 3; s++) { w += global.bw[s*4+2]; n += global.bn[s*4+2]; } return round(w / max(1, n) * 100);" },
+    "wr_insects": { "gml": "var w = global.bw[7] + global.bw[11]; var n = global.bn[7] + global.bn[11]; return round(w / max(1, n) * 100);" },
+
+    "enemy_left_s1": { "gml": "var e = 0; var n = 0; for (var i = 0; i < 3; i++) { e += global.be[i]; n += global.bn[i]; } return round(e / max(1, n) * 100);" },
+    "enemy_left_s3": { "gml": "var e = 0; var n = 0; for (var i = 9; i < 12; i++) { e += global.be[i]; n += global.bn[i]; } return round(e / max(1, n) * 100);" },
+    "stalls":        { "gml": "return global.bstall;" },
+
+    "avg_secs":  { "gml": "var tt = 0; var n = 0; for (var i = 0; i < 12; i++) { tt += global.bt[i]; n += global.bn[i]; } return round(tt / max(1, n));" },
+    "avg_hull":  { "gml": "var h = 0; var w = 0; for (var i = 0; i < 12; i++) { h += global.bh[i]; w += global.bw[i]; } return round(h / max(1, w) * 100);" },
+
+    "boss_wr": {
+      "gml": "var wins = 0; for (var t = 0; t < 14; t++) { run_new(); var pc = global.run.car; while (array_length(pc.facs) > 0) car_remove(pc, 0); while (car_can_upgrade_bay(pc)) car_upgrade_bay(pc); car_attach_trailer(pc); var want = [\"reac_3\", \"las_3\", \"riv_2\", \"drv_2\", \"shd_1\", \"rep_1\", \"tgt_1\"]; for (var w = 0; w < array_length(want); w++) { var sp = car_find_space(pc, fac(want[w]).cells); if (is_array(sp)) car_place(pc, want[w], sp[0], sp[1], 0); } global.combat_ctx = { faction: \"corps\", elite: false, boss: true, diff: 2.0 }; combat_init(); var g = 0; while (global.cb.over == \"\" && g < 9000) { if (g % 20 == 0) { var dpc = global.cb.player; for (var dq = 0; dq < array_length(global.cb.drones); dq++) { var dr = global.cb.drones[dq]; if (dr.fac >= 0 && dr.fac < array_length(dpc.facs)) { var df = dpc.facs[dr.fac]; if (df.st.fire <= 0 && df.hp >= df.hp_max) dr.fac = -1; } if (dr.fac == -1) { var bi = -1; var bs = 0; for (var dj = 0; dj < array_length(dpc.facs); dj++) { var d2 = dpc.facs[dj]; var sc = (d2.hp_max - d2.hp) + ((d2.st.fire > 0) ? 100 : 0); var taken = false; for (var dk = 0; dk < array_length(global.cb.drones); dk++) if (global.cb.drones[dk].fac == dj) taken = true; if (!taken && sc > bs) { bs = sc; bi = dj; } } if (bi >= 0) dr.fac = bi; } } } combat_update(1/60); g += 1; } if (global.cb.over == \"win\") wins += 1; } return round(wins / 14 * 100);"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["run_matrix"] },
+
+    { "frame": 10, "assert": { "id": "wr_s1", "name": "PASSIVE WIN RATE sector 1 (%)", "expect": 76, "tolerance": 20 } },
+    { "frame": 11, "assert": { "id": "wr_s2", "name": "PASSIVE WIN RATE sector 2 (%)", "expect": 80, "tolerance": 20 } },
+    { "frame": 12, "assert": { "id": "wr_s3", "name": "PASSIVE WIN RATE sector 3 (%)", "expect": 67, "tolerance": 20 } },
+
+    { "frame": 20, "assert": { "id": "wr_bandits", "name": "vs Rust Kings (%)",   "expect": 80, "tolerance": 25 } },
+    { "frame": 21, "assert": { "id": "wr_robots",  "name": "vs Chrome Choir (%)", "expect": 78, "tolerance": 25 } },
+    { "frame": 22, "assert": { "id": "wr_corps",   "name": "vs Vantage Mutual (%)", "expect": 78, "tolerance": 25 } },
+    { "frame": 23, "assert": { "id": "wr_insects", "name": "vs The Chitin (%)",   "expect": 62, "tolerance": 28 } },
+
+    { "frame": 25, "assert": { "id": "enemy_left_s1", "name": "DIAG enemy hull left at end, sector 1 (%)", "expect": 50, "tolerance": 50 } },
+    { "frame": 26, "assert": { "id": "enemy_left_s3", "name": "DIAG enemy hull left at end, sector 3 (%)", "expect": 50, "tolerance": 50 } },
+    { "frame": 27, "assert": { "id": "stalls",        "name": "DIAG fights that hit the time cap",        "expect": 0,  "tolerance": 200 } },
+
+    { "frame": 30, "assert": { "id": "avg_secs", "name": "AVERAGE FIGHT LENGTH (s)", "expect": 47, "tolerance": 18 } },
+    { "frame": 31, "assert": { "id": "avg_hull", "name": "HULL LEFT ON A WIN (%)",   "expect": 37, "tolerance": 25 } },
+    { "frame": 40, "assert": { "id": "boss_wr",  "name": "BOSS WIN RATE (%)",        "expect": 45, "tolerance": 30 } }
+  ]
+}

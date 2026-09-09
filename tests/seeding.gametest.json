@@ -1,0 +1,28 @@
+{
+  "seed": 1234,
+  "fps": 60,
+  "total_frames": 60,
+  "stop_on_error": true,
+
+  "chunks": {
+    "seed_now":  { "gml": "return random_get_seed();" },
+    "boot_ran":  { "gml": "return variable_global_exists(\"game_inited\");" },
+    "reseed":    { "gml": "random_set_seed(1234); return true;" },
+    "is_pinned": { "gml": "return (random_get_seed() == 1234);" },
+    "not_fixed": { "gml": "return (random_get_seed() != 1234);" },
+
+    "map_varies": {
+      "gml": "var sig = []; for (var n = 0; n < 6; n++) { run_new(); var s = \"\"; for (var i = 0; i < array_length(global.run.map.nodes); i++) { s += string(global.run.map.nodes[i].kind); } array_push(sig, s); } for (var i = 1; i < 6; i++) { if (sig[i] != sig[0]) return true; } return false;"
+    }
+  },
+
+  "timeline": [
+    { "frame": 1,  "assert": { "id": "boot_ran",  "name": "boot has run",                                   "expect": true } },
+    { "frame": 1,  "assert": { "id": "not_fixed", "name": "boot randomises off GameMaker's fixed seed",     "expect": true } },
+
+    { "frame": 4,  "code":   ["reseed"] },
+    { "frame": 6,  "assert": { "id": "is_pinned", "name": "a gametest can pin the seed back for repeatability", "expect": true } },
+
+    { "frame": 20, "assert": { "id": "map_varies", "name": "successive atlases are not all identical",      "expect": true } }
+  ]
+}

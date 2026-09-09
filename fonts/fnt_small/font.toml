@@ -1,0 +1,10 @@
+#:schema ../../.gm-schema/v1.json#font
+
+# Dense labels: cell tags, tooltips, charge readouts.
+mode = "system"
+family = ["Consolas", "DejaVu Sans Mono", "Menlo", "monospace"]
+size = 12
+
+# Latin plus the general-punctuation block, so em-dashes and quotes
+# actually rasterise instead of coming out blank.
+charset_ranges = [{ from = 32, to = 126 }, { from = 0xA0, to = 0xFF }, { from = 0x2010, to = 0x2027 }]
