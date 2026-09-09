@@ -1,0 +1,38 @@
+{
+  "seed": 5,
+  "fps": 60,
+  "total_frames": 400,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed":    { "gml": "random_set_seed(5); return true;" },
+    "at_title":  { "gml": "return (room == rm_title);" },
+    "at_garage": { "gml": "return (room == rm_garage);" },
+    "at_map":    { "gml": "return (room == rm_map);" },
+    "have_run":  { "gml": "return (run_exists() && array_length(global.run.car.facs) == 4 && car_cell_count(global.run.car) == 9);" },
+    "depart":    { "gml": "goto_room(rm_map); return true;" },
+
+    "no_stray_transition": { "gml": "return (global.pending_room == -1 && (!variable_global_exists(\"active_transition\") || global.active_transition == -1));" }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 5,  "assert": { "id": "at_title", "name": "boots to the title", "expect": true } },
+
+    { "frame": 20, "inputs": [ { "key": "vk_enter", "state": "down" } ] },
+    { "frame": 21, "inputs": [ { "key": "vk_enter", "state": "up" } ] },
+
+    { "frame": 30, "assert": { "id": "have_run",  "name": "starting a run builds the rig", "expect": true } },
+    { "frame": 70, "assert": { "id": "at_garage", "name": "the fade lands in the garage without crashing", "expect": true } },
+    { "frame": 72, "assert": { "id": "no_stray_transition", "name": "transition finished and cleaned up", "expect": true } },
+    { "frame": 80, "screenshot": "started.png" },
+
+    { "frame": 100, "code": ["depart"] },
+    { "frame": 150, "assert": { "id": "at_map", "name": "leaving the garage reaches the atlas", "expect": true } },
+    { "frame": 160, "screenshot": "on_the_road.png" },
+
+    { "frame": 200, "inputs": [ { "key": "vk_enter", "state": "down" } ] },
+    { "frame": 201, "inputs": [ { "key": "vk_enter", "state": "up" } ] },
+    { "frame": 240, "assert": { "id": "at_map", "name": "stray keypresses on the map do nothing", "expect": true } }
+  ]
+}

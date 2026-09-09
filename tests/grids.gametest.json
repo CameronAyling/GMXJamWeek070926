@@ -1,0 +1,76 @@
+{
+  "seed": 29,
+  "fps": 60,
+  "total_frames": 700,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(29); return true;" },
+    "boot": { "gml": "run_new(); return true;" },
+    "deep": { "gml": "global.run.sector = 3; return run_difficulty() > 1.7;" },
+
+    "player_grid": { "gml": "var c = global.run.car; return (c.gw == 3 && c.gh == 3 && car_cell_count(c) == 9);" },
+    "player_fits": { "gml": "var c = global.run.car; var used = 0; for (var i = 0; i < array_length(c.facs); i++) used += array_length(c.facs[i].cells); return (used == 5 && array_length(c.facs) == 4);" },
+    "plate_hole":  { "gml": "var c = global.run.car; var s = car_find_space(c, fac(\"plt_1\").cells); if (!is_array(s)) return false; car_place(c, \"plt_1\", s[0], s[1], 0); return (car_cell_count(c) == 9 && s != -1);" },
+
+    "armour_four_conjoined": {
+      "gml": "var ids = [\"plt_1\", \"plt_2\", \"plt_3\"]; for (var n = 0; n < 3; n++) { var cells = fac(ids[n]).cells; if (array_length(cells) != 4) return false; var seen = [true, false, false, false]; var changed = true; while (changed) { changed = false; for (var a = 0; a < 4; a++) { if (!seen[a]) continue; for (var b = 0; b < 4; b++) { if (seen[b]) continue; var dx = abs(cells[a][0] - cells[b][0]); var dy = abs(cells[a][1] - cells[b][1]); if (dx + dy == 1) { seen[b] = true; changed = true; } } } } for (var a = 0; a < 4; a++) if (!seen[a]) return false; } return true;"
+    },
+
+    "fight_b": { "gml": "combat_begin(\"bandits\", false, false); return true;" },
+    "fight_r": { "gml": "combat_begin(\"robots\",  false, false); return true;" },
+    "fight_c": { "gml": "combat_begin(\"corps\",   false, false); return true;" },
+
+    "bandit_fleet": { "gml": "var e = global.cb.enemies; if (array_length(e) != 4) return false; for (var i = 0; i < 4; i++) { if (e[i].gw != 2 || e[i].gh != 2) return false; if (array_length(e[i].facs) < 2) return false; } return true;" },
+
+    "robot_fleet": { "gml": "var e = global.cb.enemies; if (array_length(e) != 4) return false; if (e[0].gw != 3 || e[0].gh != 3) return false; for (var i = 1; i < 4; i++) { if (e[i].gw != 1 || e[i].gh != 1) return false; } return true;" },
+    "drones_armed": { "gml": "var e = global.cb.enemies; for (var i = 1; i < array_length(e); i++) { var d = e[i]; if (array_length(d.facs) != 1) return false; if (!fac_active(d.facs[0])) return false; if (fac(d.facs[0].def).charge <= 0) return false; } return true;" },
+
+    "corp_grid": { "gml": "var e = global.cb.enemies; return (array_length(e) == 1 && e[0].gw == 4 && e[0].gh == 4);" },
+
+    "layouts_onscreen": {
+      "gml": "var cb = global.cb; for (var i = 0; i < array_length(cb.enemies); i++) { var e = cb.enemies[i]; var l = cb.layout_e[i]; if (l.px < 700) return false; if (l.px + e.gw * l.cs > 1270) return false; if (l.py < 70) return false; if (l.py + e.gh * l.cs > 560) return false; } return true;"
+    },
+
+    "stray_is_adjacent": {
+      "gml": "var c = global.cb.player; var lay = global.cb.layout_p; var f = c.facs[0]; for (var n = 0; n < 150; n++) { var s = combat_stray(-1, 0); if (s == undefined) return -1; var cx = floor((s.px - lay.px) / lay.cs); var cy = floor((s.py - lay.py) / lay.cs); if (!car_cell_exists(c, cx, cy)) return -2; if (car_at(c, cx, cy) == 0) return -3; var adj = false; for (var k = 0; k < array_length(f.cells); k++) { var ax = f.ox + f.cells[k][0]; var ay = f.oy + f.cells[k][1]; if (abs(ax - cx) + abs(ay - cy) == 1) adj = true; } if (!adj) return -4; if (s.fac != car_at(c, cx, cy)) return -5; } return 150;"
+    },
+    "stray_none_on_drone": {
+      "gml": "var s = combat_stray(1, 0); return (s == undefined);"
+    },
+    "stray_hits_bare_grid": {
+      "gml": "var c = global.cb.player; while (array_length(c.facs) > 1) car_remove(c, 1); var bare = 0; for (var n = 0; n < 60; n++) { var s = combat_stray(-1, 0); if (s == undefined) return -1; if (s.fac == -1) bare += 1; } return bare;"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot"] },
+    { "frame": 6,  "assert": { "id": "player_grid",           "name": "the player starts on a 3x3 chassis",          "expect": true } },
+    { "frame": 6,  "assert": { "id": "player_fits",           "name": "starting loadout packs into 5 of 9 cells",    "expect": true } },
+    { "frame": 7,  "assert": { "id": "plate_hole",            "name": "and the four cells left are exactly a 2x2",   "expect": true } },
+    { "frame": 6,  "assert": { "id": "armour_four_conjoined", "name": "every armour plate is 4 conjoined cells",     "expect": true } },
+    { "frame": 8,  "code":   ["deep"] },
+    { "frame": 10, "assert": { "id": "deep", "name": "sector 3 clears the full-swarm threshold", "expect": true } },
+
+    { "frame": 20,  "code":   ["fight_b"] },
+    { "frame": 40,  "assert": { "id": "bandit_fleet",     "name": "bandits field four 2x2 cars",           "expect": true } },
+    { "frame": 42,  "assert": { "id": "layouts_onscreen", "name": "the bandit pack fits on screen",        "expect": true } },
+    { "frame": 120, "screenshot": "grid_bandits.png" },
+
+    { "frame": 150, "code":   ["fight_r"] },
+    { "frame": 170, "assert": { "id": "robot_fleet",      "name": "robots field a 3x3 hauler and three 1x1 drones", "expect": true } },
+    { "frame": 172, "assert": { "id": "drones_armed",     "name": "each drone's single cell is a working weapon",   "expect": true } },
+    { "frame": 174, "assert": { "id": "layouts_onscreen", "name": "the robot formation fits on screen",             "expect": true } },
+    { "frame": 176, "assert": { "id": "stray_none_on_drone", "name": "a 1x1 drone has no neighbouring cell to clip", "expect": true } },
+    { "frame": 260, "screenshot": "grid_robots.png" },
+
+    { "frame": 290, "code":   ["fight_c"] },
+    { "frame": 310, "assert": { "id": "corp_grid",        "name": "corporations drive a 4x4 chassis",  "expect": true } },
+    { "frame": 312, "assert": { "id": "layouts_onscreen", "name": "the corp car fits on screen",       "expect": true } },
+    { "frame": 400, "screenshot": "grid_corps.png" },
+
+    { "frame": 430, "assert": { "id": "stray_is_adjacent", "name": "a stray only ever clips a neighbouring cell", "expect": 150, "tolerance": 0 } },
+    { "frame": 440, "assert": { "id": "stray_hits_bare_grid", "name": "a stray onto empty grid hits bare chassis", "expect": 60, "tolerance": 0 } }
+  ]
+}

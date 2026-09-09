@@ -1,0 +1,71 @@
+{
+  "seed": 41,
+  "fps": 60,
+  "total_frames": 400,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(41); return true;" },
+    "boot":   { "gml": "run_new(); return true;" },
+
+    "never_in_sector_1": {
+      "gml": "for (var n = 0; n < 800; n++) { if (map_pick_faction(1) == \"insects\") return false; } return true;"
+    },
+    "present_in_sector_2": {
+      "gml": "for (var n = 0; n < 800; n++) { if (map_pick_faction(2) == \"insects\") return true; } return false;"
+    },
+    "common_in_sector_3": {
+      "gml": "var c = 0; for (var n = 0; n < 1000; n++) { if (map_pick_faction(3) == \"insects\") c += 1; } return (c > 200 && c < 450);"
+    },
+    "sector_1_maps_clean": {
+      "gml": "for (var m = 0; m < 40; m++) { global.run.sector = 1; map_generate(); var nd = global.run.map.nodes; for (var i = 0; i < array_length(nd); i++) { if (nd[i].faction == \"insects\") return false; } } return true;"
+    },
+
+    "sector3":  { "gml": "global.run.sector = 3; return true;" },
+    "fight_i":  { "gml": "combat_begin(\"insects\", false, false); return true;" },
+    "fight_c":  { "gml": "combat_begin(\"corps\",   false, false); return true;" },
+
+    "no_reactor": {
+      "gml": "var e = global.cb.enemies[0]; for (var i = 0; i < array_length(e.facs); i++) { if (fac(e.facs[i].def).gen > 0) return false; } return true;"
+    },
+    "is_organic":   { "gml": "return global.cb.enemies[0].organic;" },
+    "draws_power":  { "gml": "return (car_power_use(global.cb.enemies[0]) > 0);" },
+    "all_running":  { "gml": "var e = global.cb.enemies[0]; if (array_length(e.facs) < 3) return false; for (var i = 0; i < array_length(e.facs); i++) { if (!fac_active(e.facs[i])) return false; } return true;" },
+    "still_running": { "gml": "var e = global.cb.enemies[0]; for (var i = 0; i < array_length(e.facs); i++) { if (!fac_active(e.facs[i])) return false; } return true;" },
+    "still_fighting": { "gml": "return (global.cb.over == \"\" && global.cb.time > 2);" },
+
+    "shock_it": { "gml": "var e = global.cb.enemies[0]; status_apply(e, 0, \"elec\", 4); return e.facs[0].st.elec > 0;" },
+    "shocked_cell_down": { "gml": "return !fac_active(global.cb.enemies[0].facs[0]);" },
+    "others_unaffected": { "gml": "var e = global.cb.enemies[0]; for (var i = 1; i < array_length(e.facs); i++) { if (!fac_active(e.facs[i])) return false; } return true;" },
+
+    "corp_has_reactor": {
+      "gml": "var e = global.cb.enemies[0]; if (e.organic) return false; for (var i = 0; i < array_length(e.facs); i++) { if (fac(e.facs[i].def).gen > 0) return true; } return false;"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["boot"] },
+
+    { "frame": 6,  "assert": { "id": "never_in_sector_1",   "name": "the Chitin never appear in sector 1",   "expect": true } },
+    { "frame": 8,  "assert": { "id": "present_in_sector_2", "name": "they turn up from sector 2",            "expect": true } },
+    { "frame": 10, "assert": { "id": "common_in_sector_3",  "name": "and are the commonest thing in sector 3", "expect": true } },
+    { "frame": 12, "assert": { "id": "sector_1_maps_clean", "name": "40 generated sector-1 atlases contain none", "expect": true } },
+
+    { "frame": 20, "code":   ["boot", "sector3", "fight_i"] },
+    { "frame": 40, "assert": { "id": "is_organic",  "name": "a Chitin hull is organic",                     "expect": true } },
+    { "frame": 42, "assert": { "id": "no_reactor",  "name": "it carries no energy cell at all",             "expect": true } },
+    { "frame": 44, "assert": { "id": "draws_power", "name": "its kit would normally need power",            "expect": true } },
+    { "frame": 46, "assert": { "id": "all_running", "name": "and every facility runs anyway",               "expect": true } },
+    { "frame": 200, "assert": { "id": "still_fighting", "name": "it is still fighting seconds later",       "expect": true } },
+    { "frame": 202, "assert": { "id": "still_running", "name": "nothing has been power-shed",               "expect": true } },
+    { "frame": 210, "screenshot": "chitin.png" },
+
+    { "frame": 220, "assert": { "id": "shock_it",           "name": "electricity still lands on it",         "expect": true } },
+    { "frame": 224, "assert": { "id": "shocked_cell_down",  "name": "and shorts the cell it hits",           "expect": true } },
+    { "frame": 226, "assert": { "id": "others_unaffected",  "name": "without blacking out the whole hull",   "expect": true } },
+
+    { "frame": 300, "code":   ["fight_c"] },
+    { "frame": 330, "assert": { "id": "corp_has_reactor", "name": "everyone else still runs on cells", "expect": true } }
+  ]
+}

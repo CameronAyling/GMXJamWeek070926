@@ -1,0 +1,79 @@
+{
+  "seed": 3,
+  "fps": 60,
+  "total_frames": 700,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(3); return true;" },
+    "boot": { "gml": "run_new(); return true;" },
+
+    "all_event_choices": {
+      "gml": "var db = events_db(); var n = 0; for (var e = 0; e < array_length(db); e++) { for (var c = 0; c < array_length(db[e].choices); c++) { run_new(); global.run.scrap = 500; global.run.fuel = 9; var ch = db[e].choices[c]; if (variable_struct_exists(ch, \"req\")) { var ok = ch.req(); } var s = ch.act(); if (!is_string(s)) return -1; n += 1; } } return n;"
+    },
+
+    "locked_event_choices": {
+      "gml": "var db = events_db(); var n = 0; for (var e = 0; e < array_length(db); e++) { for (var c = 0; c < array_length(db[e].choices); c++) { var ch = db[e].choices[c]; if (variable_struct_exists(ch, \"req\")) { if (!variable_struct_exists(ch, \"req_text\")) return -1; n += 1; } } } return n;"
+    },
+
+    "walk_map": {
+      "gml": "run_new(); var hops = 0; var guard = 0; while (guard < 40) { guard += 1; var links = map_reachable(); if (array_length(links) == 0) break; var nxt = links[irandom(array_length(links) - 1)]; if (!map_can_travel(nxt)) break; map_travel(nxt); hops += 1; var nd = map_node(global.run.node); if (nd.kind == \"fuel\") { run_add_fuel(2); } } return hops;"
+    },
+
+    "garage_churn": {
+      "gml": "run_new(); var c = global.run.car; var ops = 0; for (var pass = 0; pass < 3; pass++) { while (array_length(c.facs) > 0) { var def_id = car_remove(c, 0); array_push(global.run.inv, def_id); ops += 1; } while (array_length(global.run.inv) > 0) { var did = global.run.inv[0]; array_delete(global.run.inv, 0, 1); var rot = irandom(3); var cells = shape_rotated(fac(did).cells, rot); var spot = car_find_space(c, cells); if (is_array(spot)) { car_place(c, did, spot[0], spot[1], rot); } ops += 1; } } return ops;"
+    },
+
+    "win_and_exit":  { "gml": "global.cb.over = \"win\"; global.cb.reward = 30; combat_exit(); return true;" },
+    "flee_and_exit": { "gml": "global.cb.over = \"fled\"; combat_exit(); return true;" },
+
+    "fight_r": { "gml": "combat_begin(\"robots\", false, false); return true;" },
+    "fight_b": { "gml": "combat_begin(\"bandits\", true, false); return true;" },
+
+    "in_map":   { "gml": "return (room == rm_map);" },
+    "scrap_up": { "gml": "return global.run.scrap >= 30;" },
+
+    "next_sector":   { "gml": "run_next_sector(); return global.run.sector;" },
+    "sector_three":  { "gml": "global.run.sector = 3; run_next_sector(); return true;" },
+
+    "kill_all_facs": { "gml": "var c = global.run.car; for (var i = 0; i < array_length(c.facs); i++) c.facs[i].hp = 0; car_enforce_power(c); car_restore_power(c); return array_length(c.facs);" },
+    "empty_rig":     { "gml": "var c = global.run.car; while (array_length(c.facs) > 0) car_remove(c, 0); return array_length(c.facs);" },
+    "fight_empty":   { "gml": "combat_begin(\"insects\", false, false); return true;" },
+    "shop_stock_ok": { "gml": "var s = shop_stock(); for (var i = 0; i < array_length(s); i++) { if (!fac_exists(s[i])) return false; } return array_length(s) > 0;" }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot"] },
+
+    { "frame": 6,  "assert": { "id": "locked_event_choices", "name": "every gated choice explains why it's locked", "expect": 10, "tolerance": 0 } },
+    { "frame": 10, "assert": { "id": "all_event_choices",    "name": "every event choice resolves without crashing", "expect": 42, "tolerance": 0 } },
+
+    { "frame": 20, "assert": { "id": "walk_map",     "name": "a full sector can be driven end to end", "expect": true } },
+    { "frame": 26, "assert": { "id": "garage_churn", "name": "stripping and refitting the rig repeatedly is safe", "expect": true } },
+    { "frame": 30, "assert": { "id": "shop_stock_ok","name": "shop stock is all real facilities", "expect": true } },
+
+    { "frame": 40,  "code": ["boot"] },
+    { "frame": 46,  "code": ["fight_r"] },
+    { "frame": 80,  "code": ["win_and_exit"] },
+    { "frame": 120, "assert": { "id": "in_map",   "name": "winning returns you to the atlas", "expect": true } },
+    { "frame": 122, "assert": { "id": "scrap_up", "name": "salvage was banked", "expect": true } },
+
+    { "frame": 140, "code": ["fight_b"] },
+    { "frame": 180, "code": ["flee_and_exit"] },
+    { "frame": 220, "assert": { "id": "in_map", "name": "fleeing returns you to the atlas", "expect": true } },
+
+    { "frame": 240, "assert": { "id": "next_sector", "name": "sector advances", "expect": 2, "tolerance": 0 } },
+
+    { "frame": 280, "code": ["boot", "kill_all_facs"] },
+    { "frame": 290, "code": ["fight_empty"] },
+    { "frame": 340, "screenshot": "wrecked_rig.png" },
+
+    { "frame": 360, "code": ["boot", "empty_rig"] },
+    { "frame": 370, "code": ["fight_empty"] },
+    { "frame": 430, "screenshot": "empty_rig.png" },
+
+    { "frame": 470, "code": ["boot", "sector_three"] },
+    { "frame": 540, "screenshot": "boss_via_exit.png" }
+  ]
+}

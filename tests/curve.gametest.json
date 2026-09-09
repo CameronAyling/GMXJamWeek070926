@@ -1,0 +1,67 @@
+{
+  "seed": 97,
+  "fps": 60,
+  "total_frames": 200,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(97); return true;" },
+    "boot":   { "gml": "run_new(); return true;" },
+
+    "at": { "gml": "return true;" },
+
+    "d_s1_start": { "gml": "global.run.sector = 1; global.run.moves = 0; return run_difficulty();" },
+    "d_s2_start": { "gml": "global.run.sector = 2; global.run.moves = 0; return run_difficulty();" },
+    "d_s3_start": { "gml": "global.run.sector = 3; global.run.moves = 0; return run_difficulty();" },
+    "d_s3_end":   { "gml": "global.run.sector = 3; global.run.moves = round(global.run.map.cols * 1.5); return run_difficulty();" },
+
+    "tier_ramp": {
+      "gml": "return (fac(tier_pick(\"las\", 0.85)).tier == 1 && fac(tier_pick(\"las\", 1.30)).tier == 1 && fac(tier_pick(\"las\", 1.55)).tier == 2 && fac(tier_pick(\"las\", 1.75)).tier == 2 && fac(tier_pick(\"las\", 1.95)).tier == 3);"
+    },
+
+    "sector1_is_all_tier1": {
+      "gml": "var kinds = [\"bandits\", \"robots\", \"corps\"]; for (var n = 0; n < 60; n++) { var d = 0.85 + (n mod 6) * 0.05; var g = enemy_group(kinds[n mod 3], d, false, false); for (var c = 0; c < array_length(g); c++) { var car = g[c]; for (var i = 0; i < array_length(car.facs); i++) { if (fac(car.facs[i].def).tier > 1) return false; } } } return true;"
+    },
+
+    "pack_ramp": {
+      "gml": "return (array_length(enemy_group(\"bandits\", 0.85, false, false)) == 2 && array_length(enemy_group(\"bandits\", 1.30, false, false)) == 3 && array_length(enemy_group(\"bandits\", 1.50, false, false)) == 4);"
+    },
+    "swarm_ramp": {
+      "gml": "return (array_length(enemy_group(\"robots\", 0.85, false, false)) == 2 && array_length(enemy_group(\"robots\", 1.30, false, false)) == 3 && array_length(enemy_group(\"robots\", 1.75, false, false)) == 4);"
+    },
+
+    "everyone_powered": {
+      "gml": "var kinds = [\"bandits\", \"robots\", \"corps\", \"insects\"]; for (var n = 0; n < 80; n++) { var d = 0.85 + (n mod 12) * 0.1; var g = enemy_group(kinds[n mod 4], d, false, false); for (var c = 0; c < array_length(g); c++) { if (car_power_use(g[c]) > car_power_gen(g[c])) return false; } } return true;"
+    },
+    "everyone_armed": {
+      "gml": "var kinds = [\"bandits\", \"robots\", \"corps\", \"insects\"]; for (var n = 0; n < 80; n++) { var d = 0.85 + (n mod 12) * 0.1; var g = enemy_group(kinds[n mod 4], d, false, false); var guns = 0; for (var c = 0; c < array_length(g); c++) { var car = g[c]; for (var i = 0; i < array_length(car.facs); i++) if (fac(car.facs[i].def).charge > 0 && fac_active(car.facs[i])) guns += 1; } if (guns == 0) return false; } return true;"
+    },
+
+    "boss_is_hardest": {
+      "gml": "var b = enemy_group(\"corps\", 2.0, false, true)[0]; var c = enemy_group(\"corps\", 1.5, false, false)[0]; return (b.gw * b.gh > c.gw * c.gh && array_length(b.facs) > array_length(c.facs) && b.repo_max > 0 && car_shield_max(b) >= car_shield_max(c) && b.hull > c.hull);"
+    },
+    "boss_outweighs_player": {
+      "gml": "var b = enemy_group(\"corps\", 2.0, false, true)[0]; var pc = global.run.car; while (car_can_upgrade_bay(pc)) car_upgrade_bay(pc); car_attach_trailer(pc); var maxed = car_cell_count(pc); return (b.gw * b.gh > maxed && b.gw * b.gh < maxed * 2.5);"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["boot"] },
+
+    { "frame": 6,  "assert": { "id": "d_s1_start", "name": "leaving the yard at 0.85", "expect": 0.85, "tolerance": 0.02 } },
+    { "frame": 8,  "assert": { "id": "d_s2_start", "name": "sector 2 opens at 1.30",   "expect": 1.30, "tolerance": 0.02 } },
+    { "frame": 10, "assert": { "id": "d_s3_start", "name": "sector 3 opens at 1.75",   "expect": 1.75, "tolerance": 0.02 } },
+    { "frame": 12, "assert": { "id": "d_s3_end",   "name": "and tops out at 2.00",     "expect": 2.00, "tolerance": 0.03 } },
+
+    { "frame": 20, "assert": { "id": "tier_ramp",           "name": "tier 2 lands late in sector 2, tier 3 late in sector 3", "expect": true } },
+    { "frame": 24, "assert": { "id": "sector1_is_all_tier1","name": "sector 1 never fields tier-2 kit against a 9-cell rig", "expect": true } },
+    { "frame": 28, "assert": { "id": "pack_ramp",           "name": "bandit packs reach four before they vanish",  "expect": true } },
+    { "frame": 32, "assert": { "id": "swarm_ramp",          "name": "robot escorts grow one drone per sector",     "expect": true } },
+
+    { "frame": 40, "assert": { "id": "everyone_powered", "name": "no enemy is built over its own reactor budget", "expect": true } },
+    { "frame": 44, "assert": { "id": "everyone_armed",   "name": "and every force generated can actually shoot",  "expect": true } },
+    { "frame": 48, "assert": { "id": "boss_is_hardest",  "name": "the boss still outweighs a normal creditor",    "expect": true } },
+    { "frame": 52, "assert": { "id": "boss_outweighs_player", "name": "and towers over a maxed rig without dwarfing it", "expect": true } }
+  ]
+}

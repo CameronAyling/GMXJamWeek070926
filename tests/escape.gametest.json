@@ -1,0 +1,64 @@
+{
+  "seed": 17,
+  "fps": 60,
+  "total_frames": 1100,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(17); return true;" },
+    "boot": { "gml": "run_new(); return true;" },
+    "fit_drive": { "gml": "var c = global.run.car; while (array_length(c.facs) > 0) car_remove(c, 0); var want = [\"reac_2\", \"drv_2\", \"las_1\"]; for (var i = 0; i < 3; i++) { var s = car_find_space(c, fac(want[i]).cells); if (is_array(s)) car_place(c, want[i], s[0], s[1], 0); } return array_length(c.facs);" },
+
+    "fight":     { "gml": "combat_begin(\"robots\", false, false); return true;" },
+    "make_safe": { "gml": "global.cb.player.hull = 900; for (var e = 0; e < array_length(global.cb.enemies); e++) { var t = global.cb.enemies[e]; for (var i = 0; i < array_length(t.facs); i++) { if (fac(t.facs[i].def).charge > 0) t.facs[i].hp = 0; } } return true;" },
+
+    "esc":        { "gml": "return global.cb.player.escape;" },
+    "near_empty": { "gml": "return (global.cb.player.escape < 0.1);" },
+    "can":        { "gml": "return combat_can_escape();" },
+    "over":       { "gml": "return global.cb.over;" },
+    "press":      { "gml": "combat_try_escape(); return global.cb.over;" },
+
+    "snap":       { "gml": "global.esc_snap = global.cb.player.escape; return global.esc_snap;" },
+    "same_snap":  { "gml": "return abs(global.cb.player.escape - global.esc_snap) < 0.005;" },
+    "above_snap": { "gml": "return global.cb.player.escape > global.esc_snap + 0.01;" },
+
+    "harpoon":   { "gml": "global.cb.player.harpoon = 60; return true;" },
+    "unharpoon": { "gml": "global.cb.player.harpoon = 0; return true;" },
+
+    "nearly":      { "gml": "global.cb.player.escape = 0.95; return true;" },
+    "strip_drive": { "gml": "var c = global.cb.player; for (var i = 0; i < array_length(c.facs); i++) { if (fac(c.facs[i].def).cat == \"move\") c.facs[i].hp = 0; } return car_escape_rate(c);" }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot", "fit_drive"] },
+    { "frame": 10, "code": ["fight"] },
+    { "frame": 30, "code": ["make_safe"] },
+
+    { "frame": 34,  "assert": { "id": "near_empty", "name": "a fight starts with the drive near empty", "expect": true } },
+    { "frame": 40,  "code":   ["snap"] },
+    { "frame": 160, "assert": { "id": "above_snap", "name": "the meter builds up on its own",  "expect": true } },
+    { "frame": 164, "assert": { "id": "can",        "name": "but a part-charged drive can't leave", "expect": false } },
+    { "frame": 168, "assert": { "id": "press",      "name": "pressing it early does nothing",       "expect": "" } },
+
+    { "frame": 200, "code":   ["nearly"] },
+    { "frame": 260, "assert": { "id": "esc", "name": "the meter fills and then holds at full", "expect": 1, "tolerance": 0 } },
+    { "frame": 264, "assert": { "id": "can", "name": "a full drive is ready to go",            "expect": true } },
+    { "frame": 268, "assert": { "id": "over", "name": "and it waits for you rather than firing itself", "expect": "" } },
+
+    { "frame": 300, "code":   ["harpoon", "snap"] },
+    { "frame": 306, "assert": { "id": "can",   "name": "a harpoon locks a full drive down", "expect": false } },
+    { "frame": 310, "assert": { "id": "press", "name": "and the button refuses while pinned", "expect": "" } },
+    { "frame": 380, "assert": { "id": "same_snap", "name": "the meter is frozen while pinned", "expect": true } },
+
+    { "frame": 400, "code":   ["unharpoon"] },
+    { "frame": 406, "assert": { "id": "can",   "name": "cutting the cable frees the drive again", "expect": true } },
+    { "frame": 410, "assert": { "id": "press", "name": "pressing it now breaks you out",          "expect": "fled" } },
+
+    { "frame": 500, "code":   ["boot", "fit_drive", "fight"] },
+    { "frame": 540, "code":   ["make_safe", "strip_drive"] },
+    { "frame": 546, "code":   ["snap"] },
+    { "frame": 700, "assert": { "id": "same_snap", "name": "a wrecked drive stops the meter building", "expect": true } },
+    { "frame": 704, "assert": { "id": "can",       "name": "and there is nothing to press",            "expect": false } }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "seed": 7,
+  "fps": 60,
+  "total_frames": 920,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed":       { "gml": "random_set_seed(7); return true;" },
+    "start":        { "gml": "run_new(); room_goto(rm_garage); return true;" },
+    "check_rig":    { "gml": "return array_length(global.run.car.facs);" },
+    "check_map":    { "gml": "return array_length(global.run.map.nodes) > 6;" },
+
+    "to_map":        { "gml": "room_goto(rm_map); return true;" },
+    "fight_robots":  { "gml": "combat_begin(\"robots\", false, false); return true;" },
+    "fight_bandits": { "gml": "combat_begin(\"bandits\", false, false); return true;" },
+    "fight_corps":   { "gml": "combat_begin(\"corps\", false, false); return true;" },
+    "fight_insects": { "gml": "combat_begin(\"insects\", false, false); return true;" },
+    "fight_boss":    { "gml": "combat_begin(\"corps\", false, true); return true;" },
+
+    "paint_statuses": {
+      "gml": "var c = global.cb.player; var n = array_length(c.facs); if (n > 0) status_apply(c, 0, \"elec\", 20); if (n > 1) status_apply(c, 1, \"fire\", 20); if (n > 2) status_apply(c, 2, \"oil\", 20); if (n > 3) status_apply(c, 3, \"acid\", 20); return n;"
+    },
+    "check_statuses": { "gml": "var c = global.cb.player; return (c.facs[0].st.elec > 0 && c.facs[1].st.fire > 0 && c.facs[2].st.oil > 0 && c.facs[3].st.acid > 0);" },
+    "check_bandit_pack": { "gml": "return array_length(global.cb.enemies) >= 2;" },
+    "check_repo":        { "gml": "return global.cb.enemies[0].repo_max > 0;" },
+    "check_clock":       { "gml": "return global.cb.time > 1;" },
+    "check_powered":     { "gml": "return car_power_use(global.cb.player);" },
+    "check_boss_grid":   { "gml": "return global.cb.enemies[0].gw;" },
+
+    "open_event":  { "gml": "with (obj_map) { ev = event_pick(); ev_result = \"\"; } return true;" },
+    "to_shop":     { "gml": "garage_open(true); return true;" },
+
+    "kill_run":    { "gml": "global.run.result = \"dead\"; room_goto(rm_gameover); return true;" }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["start"] },
+    { "frame": 14, "assert": { "id": "check_rig", "name": "starting rig has 4 facilities", "expect": 4, "tolerance": 0 } },
+    { "frame": 14, "assert": { "id": "check_map", "name": "atlas generated", "expect": true } },
+    { "frame": 44, "screenshot": "01_garage.png" },
+
+    { "frame": 50, "code": ["to_map"] },
+    { "frame": 92, "screenshot": "02_map.png" },
+
+    { "frame": 96,  "code": ["open_event"] },
+    { "frame": 110, "screenshot": "03_event.png" },
+
+    { "frame": 118, "code": ["to_shop"] },
+    { "frame": 160, "screenshot": "04_truckstop.png" },
+
+    { "frame": 170, "code": ["fight_robots"] },
+    { "frame": 200, "assert": { "id": "check_powered", "name": "fight starts with the rig lit up", "expect": 4, "tolerance": 0 } },
+    { "frame": 250, "code": ["paint_statuses"] },
+    { "frame": 254, "assert": { "id": "check_statuses", "name": "all four status effects applied", "expect": true } },
+    { "frame": 256, "assert": { "id": "check_clock",    "name": "combat clock is running", "expect": true } },
+    { "frame": 262, "screenshot": "05_combat_robots.png" },
+
+    { "frame": 280, "code": ["fight_bandits"] },
+    { "frame": 300, "assert": { "id": "check_bandit_pack", "name": "bandits arrive as a pack", "expect": true } },
+    { "frame": 420, "screenshot": "06_combat_bandits.png" },
+
+    { "frame": 434, "code": ["fight_corps"] },
+    { "frame": 454, "assert": { "id": "check_repo", "name": "corps carry a repossession clock", "expect": true } },
+    { "frame": 560, "screenshot": "07_combat_corps.png" },
+
+    { "frame": 574, "code": ["fight_insects"] },
+    { "frame": 700, "screenshot": "08_combat_insects.png" },
+
+    { "frame": 714, "code": ["fight_boss"] },
+    { "frame": 734, "assert": { "id": "check_boss_grid", "name": "the boss drives a 6-wide chassis", "expect": 6, "tolerance": 0 } },
+    { "frame": 840, "screenshot": "09_boss.png" },
+
+    { "frame": 856, "code": ["kill_run"] },
+    { "frame": 900, "screenshot": "10_gameover.png" }
+  ]
+}

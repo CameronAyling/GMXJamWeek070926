@@ -1,0 +1,65 @@
+{
+  "seed": 7,
+  "fps": 60,
+  "total_frames": 340,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed":    { "gml": "random_set_seed(7); return true;" },
+    "start":     { "gml": "run_new(); return true;" },
+    "nfacs":     { "gml": "return array_length(global.run.car.facs);" },
+    "gen":       { "gml": "return car_power_gen(global.run.car);" },
+    "cap":       { "gml": "return car_power_cap(global.run.car);" },
+    "demand":    { "gml": "return car_power_demand(global.run.car);" },
+
+    "fight":       { "gml": "combat_begin(\"robots\", false, false); return true;" },
+    "cb_use":      { "gml": "return car_power_use(global.cb.player);" },
+    "cb_gen":      { "gml": "return car_power_gen(global.cb.player);" },
+
+    "short_reactor": { "gml": "status_apply(global.cb.player, 0, \"elec\", 2); return true;" },
+    "clear_short":   { "gml": "global.cb.player.facs[0].st.elec = 0; return true;" },
+
+    "cut_laser":   { "gml": "var c = global.cb.player; for (var i = 0; i < array_length(c.facs); i++) { if (fac(c.facs[i].def).cat == \"weapon\") { global.test_gun = i; combat_toggle_power(i); return c.facs[i].manual_off; } } return false;" },
+    "laser_on":    { "gml": "return global.cb.player.facs[global.test_gun].powered;" },
+
+    "no_reactor_floor": { "gml": "var c = global.run.car; for (var i = array_length(c.facs) - 1; i >= 0; i--) { if (fac(c.facs[i].def).gen > 0) car_remove(c, i); } return car_power_gen(c);" },
+    "no_reactor_cap":   { "gml": "return car_power_cap(global.run.car);" },
+
+    "blackout_keeps_drive": {
+      "gml": "var c = global.cb.player; if (car_power_gen(c) != 1) return -1; var moves_on = 0; var guns_on = 0; for (var i = 0; i < array_length(c.facs); i++) { if (!c.facs[i].powered) continue; var cat = fac(c.facs[i].def).cat; if (cat == \"move\") moves_on += 1; if (cat == \"weapon\") guns_on += 1; } if (guns_on != 0) return -2; return moves_on;"
+    },
+
+    "fight2":      { "gml": "combat_begin(\"bandits\", false, false); return true;" }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["start"] },
+    { "frame": 8,  "assert": { "id": "nfacs",  "name": "starting rig has 4 facilities", "expect": 4, "tolerance": 0 } },
+    { "frame": 8,  "assert": { "id": "gen",    "name": "reactor generates 5",           "expect": 5, "tolerance": 0 } },
+    { "frame": 8,  "assert": { "id": "cap",    "name": "power cap is 5",                "expect": 5, "tolerance": 0 } },
+    { "frame": 8,  "assert": { "id": "demand", "name": "loadout demands 4",             "expect": 4, "tolerance": 0 } },
+
+    { "frame": 20, "code": ["fight"] },
+    { "frame": 36, "assert": { "id": "cb_use", "name": "fight starts with the rig lit up", "expect": 4, "tolerance": 0 } },
+
+    { "frame": 44, "code": ["short_reactor"] },
+    { "frame": 48, "assert": { "id": "cb_gen", "name": "a shorted reactor falls back to the starter cell", "expect": 1, "tolerance": 0 } },
+    { "frame": 48, "assert": { "id": "cb_use", "name": "which powers exactly one facility",                "expect": 1, "tolerance": 0 } },
+    { "frame": 50, "assert": { "id": "blackout_keeps_drive", "name": "and it keeps the drive, not the guns", "expect": 1, "tolerance": 0 } },
+
+    { "frame": 62, "code": ["clear_short"] },
+    { "frame": 68, "assert": { "id": "cb_use", "name": "power comes back once the short clears", "expect": 4, "tolerance": 0 } },
+
+    { "frame": 80,  "code": ["cut_laser"] },
+    { "frame": 86,  "assert": { "id": "laser_on", "name": "a hand-cut facility stays off", "expect": false } },
+    { "frame": 140, "assert": { "id": "laser_on", "name": "auto-restore respects a hand-cut facility", "expect": false } },
+
+    { "frame": 200, "code": ["fight2"] },
+    { "frame": 226, "assert": { "id": "cb_use", "name": "next fight re-lights the whole rig", "expect": 4, "tolerance": 0 } },
+
+    { "frame": 300, "code":   ["start"] },
+    { "frame": 306, "assert": { "id": "no_reactor_floor", "name": "a rig with no reactor still makes 1 power", "expect": 1, "tolerance": 0 } },
+    { "frame": 308, "assert": { "id": "no_reactor_cap",   "name": "and the garage budgets for it",             "expect": 1, "tolerance": 0 } }
+  ]
+}

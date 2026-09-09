@@ -3,4 +3,4 @@
 name = "fasterthanfuel"
 
 [room_order]
-order = ["rm_main"]
+order = ["rm_title", "rm_garage", "rm_map", "rm_combat", "rm_gameover"]

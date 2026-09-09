@@ -1,0 +1,68 @@
+{
+  "seed": 71,
+  "fps": 60,
+  "total_frames": 300,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed":  { "gml": "random_set_seed(71); return true;" },
+    "boot":    { "gml": "run_new(); return true;" },
+    "to_map":  { "gml": "room_goto(rm_map); return true;" },
+
+    "edges_two_way": {
+      "gml": "for (var g = 0; g < 30; g++) { map_generate(); var m = global.run.map; for (var e = 0; e < array_length(m.edges); e++) { var a = m.edges[e].a; var b = m.edges[e].b; var la = m.nodes[a].links; var lb = m.nodes[b].links; var fa = false; for (var i = 0; i < array_length(la); i++) if (la[i] == b) fa = true; var fb = false; for (var i = 0; i < array_length(lb); i++) if (lb[i] == a) fb = true; if (!fa || !fb) return false; } } return true;"
+    },
+
+    "can_double_back": {
+      "gml": "for (var g = 0; g < 30; g++) { map_generate(); var m = global.run.map; var l0 = m.nodes[0].links; if (array_length(l0) == 0) return false; for (var k = 0; k < array_length(l0); k++) { var t = l0[k]; var back = false; var lt = m.nodes[t].links; for (var i = 0; i < array_length(lt); i++) if (lt[i] == 0) back = true; if (!back) return false; } } return true;"
+    },
+
+    "all_reachable": {
+      "gml": "for (var g = 0; g < 30; g++) { map_generate(); var m = global.run.map; var n = array_length(m.nodes); var seen = array_create(n, false); seen[0] = true; var changed = true; while (changed) { changed = false; for (var a = 0; a < n; a++) { if (!seen[a]) continue; var l = m.nodes[a].links; for (var i = 0; i < array_length(l); i++) { if (!seen[l[i]]) { seen[l[i]] = true; changed = true; } } } } for (var a = 0; a < n; a++) if (!seen[a]) return false; } return true;"
+    },
+
+    "denser_than_before": {
+      "gml": "var total = 0; var links = 0; for (var g = 0; g < 30; g++) { map_generate(); var m = global.run.map; total += array_length(m.nodes); links += array_length(m.edges); } return (total / 30 >= 13 && links / 30 >= 18);"
+    },
+
+    "has_lateral_roads": {
+      "gml": "var found = 0; for (var g = 0; g < 30; g++) { map_generate(); var m = global.run.map; for (var e = 0; e < array_length(m.edges); e++) { if (m.nodes[m.edges[e].a].col == m.nodes[m.edges[e].b].col) { found += 1; break; } } } return (found >= 20);"
+    },
+
+    "exit_exists": {
+      "gml": "for (var g = 0; g < 30; g++) { map_generate(); var m = global.run.map; var found = false; for (var i = 0; i < array_length(m.nodes); i++) if (m.nodes[i].kind == \"exit\") found = true; if (!found) return false; } return true;"
+    },
+
+    "convoy_walls_off": {
+      "gml": "var r = global.run; map_generate(); r.convoy = 2.5; var blocked = 0; var l = map_reachable(); for (var i = 0; i < array_length(r.map.nodes); i++) { if (map_node_lost(i) && map_is_reachable(i)) { if (map_can_travel(i)) return false; blocked += 1; } } r.convoy = -1.6; return true;"
+    },
+
+    "find_fight": {
+      "gml": "var r = global.run; for (var i = 0; i < array_length(r.map.nodes); i++) { if (r.map.nodes[i].kind == \"fight\") { global.test_node = i; r.node = i; return true; } } global.test_node = -1; return false;"
+    },
+    "fresh_node_fires": {
+      "gml": "var r = global.run; r.map.nodes[global.test_node].resolved = false; global.pending_room = -1; with (obj_map) { map_resolve_arrival(); } var fired = (global.pending_room != -1); global.pending_room = -1; return fired;"
+    },
+    "revisit_is_quiet": {
+      "gml": "var r = global.run; r.map.nodes[global.test_node].resolved = true; global.pending_room = -1; with (obj_map) { map_resolve_arrival(); } var fired = (global.pending_room != -1); global.pending_room = -1; return !fired;"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["boot"] },
+
+    { "frame": 6,  "assert": { "id": "edges_two_way",      "name": "every road is registered in both directions", "expect": true } },
+    { "frame": 8,  "assert": { "id": "can_double_back",    "name": "you can drive back the way you came",         "expect": true } },
+    { "frame": 10, "assert": { "id": "all_reachable",      "name": "every town is reachable from the yard",       "expect": true } },
+    { "frame": 12, "assert": { "id": "denser_than_before", "name": "the graph is denser than a plain corridor",   "expect": true } },
+    { "frame": 14, "assert": { "id": "has_lateral_roads",  "name": "columns are laced together sideways",         "expect": true } },
+    { "frame": 16, "assert": { "id": "exit_exists",        "name": "every sector still has an on-ramp",           "expect": true } },
+    { "frame": 18, "assert": { "id": "convoy_walls_off",   "name": "you cannot double back past the repo line",   "expect": true } },
+
+    { "frame": 30, "code":   ["boot", "to_map"] },
+    { "frame": 60, "assert": { "id": "find_fight",         "name": "found a roadblock to test against",     "expect": true } },
+    { "frame": 64, "assert": { "id": "fresh_node_fires",   "name": "an unvisited roadblock starts a fight", "expect": true } },
+    { "frame": 68, "assert": { "id": "revisit_is_quiet",   "name": "driving back through it does not",      "expect": true } }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "seed": 21,
+  "fps": 60,
+  "total_frames": 400,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(21); return true;" },
+    "boot":   { "gml": "run_new(); return true;" },
+    "fight":  { "gml": "combat_begin(\"bandits\", false, false); return true;" },
+    "part":   { "gml": "global.cb.player.escape = 0.55; return true;" },
+    "full":   { "gml": "global.cb.player.escape = 1; return true;" },
+    "pin":    { "gml": "global.cb.player.harpoon = 40; return true;" },
+
+    "spooling": { "gml": "return (!combat_can_escape() && global.cb.player.escape > 0.5); " },
+    "ready":    { "gml": "return combat_can_escape();" },
+    "pinned":   { "gml": "return (!combat_can_escape() && global.cb.player.harpoon > 0 && global.cb.player.escape >= 1);" }
+  },
+
+  "timeline": [
+    { "frame": 0,   "code": ["reseed"] },
+    { "frame": 2,   "code": ["boot"] },
+    { "frame": 10,  "code": ["fight"] },
+
+    { "frame": 100, "code":   ["part"] },
+    { "frame": 108, "assert": { "id": "spooling", "name": "part-charged and not yet usable", "expect": true } },
+    { "frame": 110, "screenshot": "esc_spooling.png" },
+
+    { "frame": 150, "code":   ["full"] },
+    { "frame": 158, "assert": { "id": "ready", "name": "full and ready to press", "expect": true } },
+    { "frame": 160, "screenshot": "esc_ready.png" },
+
+    { "frame": 200, "code":   ["pin", "full"] },
+    { "frame": 248, "assert": { "id": "pinned", "name": "full but pinned by a cable", "expect": true } },
+    { "frame": 250, "screenshot": "esc_pinned.png" }
+  ]
+}

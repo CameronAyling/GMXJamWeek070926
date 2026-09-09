@@ -1,0 +1,10 @@
+#:schema ../../../.gm-schema/v1.json#layer
+
+kind = "instances"
+depth = 0
+
+[[entries]]
+id = "inst_rm_garage_obj_garage_0"
+object = "obj_garage"
+x = 0.0
+y = 0.0

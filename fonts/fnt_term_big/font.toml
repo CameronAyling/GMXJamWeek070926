@@ -1,0 +1,11 @@
+#:schema ../../.gm-schema/v1.json#font
+
+# Panel headers and faction names.
+mode = "system"
+family = ["Consolas", "DejaVu Sans Mono", "Menlo", "monospace"]
+size = 22
+bold = true
+
+# Latin plus the general-punctuation block, so em-dashes and quotes
+# actually rasterise instead of coming out blank.
+charset_ranges = [{ from = 32, to = 126 }, { from = 0xA0, to = 0xFF }, { from = 0x2010, to = 0x2027 }]

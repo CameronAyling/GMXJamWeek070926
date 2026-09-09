@@ -1,0 +1,31 @@
+{
+  "seed": 89,
+  "fps": 60,
+  "total_frames": 400,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed":    { "gml": "random_set_seed(89); return true;" },
+    "boot":      { "gml": "run_new(); global.run.scrap = 900; room_goto(rm_garage); return true;" },
+    "one_bay":   { "gml": "car_upgrade_bay(global.run.car); with (obj_garage) garage_fit(); return car_cell_count(global.run.car);" },
+    "all_bays":  { "gml": "var c = global.run.car; while (car_can_upgrade_bay(c)) car_upgrade_bay(c); with (obj_garage) garage_fit(); return car_cell_count(c);" },
+    "hitch":     { "gml": "car_attach_trailer(global.run.car); with (obj_garage) garage_fit(); return car_cell_count(global.run.car);" },
+    "in_garage": { "gml": "return (room == rm_garage);" }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot"] },
+    { "frame": 20, "assert": { "id": "in_garage", "name": "in the chassis bay", "expect": true } },
+    { "frame": 22, "screenshot": "ch_start.png" },
+
+    { "frame": 40, "assert": { "id": "one_bay",  "name": "one bay welded", "expect": 10, "tolerance": 0 } },
+    { "frame": 60, "screenshot": "ch_onebay.png" },
+
+    { "frame": 80,  "assert": { "id": "all_bays", "name": "column complete", "expect": 12, "tolerance": 0 } },
+    { "frame": 100, "screenshot": "ch_full.png" },
+
+    { "frame": 120, "assert": { "id": "hitch",   "name": "trailer hitched", "expect": 16, "tolerance": 0 } },
+    { "frame": 150, "screenshot": "ch_trailer.png" }
+  ]
+}
