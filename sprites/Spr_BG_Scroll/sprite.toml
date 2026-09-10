@@ -1,0 +1,6 @@
+#:schema ../../.gm-schema/v1.json#sprite
+origin = "custom"
+
+[custom_origin]
+x = 949
+y = 576

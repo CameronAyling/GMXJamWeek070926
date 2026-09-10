@@ -1,5 +1,11 @@
 {
   "permissions": {
-    "allow": ["Bash(gmx:*)"]
+    "allow": [
+      "Bash(gmx:*)",
+      "Bash(mkdir -p /tmp/wings)",
+      "Bash(ffmpeg -y -v error -i sprites/Spr_Bug_Wings_001.png -vf \"crop=282:472:0:0\" /tmp/wings/top.png)",
+      "Bash(ffmpeg -y -v error -i sprites/Spr_Bug_Wings_001.png -vf \"crop=282:472:0:472\" /tmp/wings/bot.png)",
+      "Read(//tmp/**)"
+    ]
   }
 }

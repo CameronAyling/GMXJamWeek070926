@@ -548,14 +548,52 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     }
 }
 
+/// The painted car art, fitted to the chassis footprint so the wireframe and
+/// its readouts sit over the top of it. `_shadow` may be -1.
+///
+/// Both car and shadow sprites are authored top-left aligned on canvases of
+/// different sizes — the shadow's is larger, with the blur trailing down and
+/// right — so drawing the pair from the same corner at the same scale puts the
+/// shadow under the body with its offset already baked in.
+function draw_car_art(_car, _px, _py, _cs, _sprite, _shadow, _flip) {
+    if (_sprite == -1) return;
+
+    var pad   = _cs * 0.30;
+    var nose  = _cs * 0.9;
+    var wheel = _cs * 0.15 * 1.55;      // how far a wheel slab pokes past the flank
+    var x0    = car_body_x0(_car);
+
+    // The chassis footprint, matching draw_chassis: body + bonnet + wheels.
+    var fx1 = _px + x0 * _cs - pad - (_flip ? nose : 0);
+    var fx2 = _px + _car.gw * _cs + pad + (_flip ? 0 : nose);
+    var fy1 = _py - pad - wheel;
+    var fy2 = _py + _car.gh * _cs + pad + wheel;
+
+    // Contain rather than stretch — grids are not all the sprite's aspect.
+    var sw = sprite_get_width(_sprite), sh = sprite_get_height(_sprite);
+    var s  = min((fx2 - fx1) / sw, (fy2 - fy1) / sh);
+    var dw = sw * s, dh = sh * s;
+    var dx = fx1 + ((fx2 - fx1) - dw) * 0.5;
+    var dy = fy1 + ((fy2 - fy1) - dh) * 0.5;
+
+    // Respect any alpha the caller set — wrecks are drawn dimmed.
+    var a  = draw_get_alpha();
+    var ox = _flip ? (dx + dw) : dx;
+    var xs = _flip ? -s : s;
+
+    if (_shadow != -1) draw_sprite_ext(_shadow, 0, ox, dy, xs, s, 0, c_white, a);
+    draw_sprite_ext(_sprite, 0, ox, dy, xs, s, 0, c_white, a);
+}
+
 /// Draw a whole car. `_opts` fields: flip, show_charge, hover_fac, target_fac,
-/// selected_fac, dim.
+/// selected_fac, dim, sprite, shadow.
 function draw_car(_car, _px, _py, _cs, _opts = undefined) {
     var p = global.PAL;
     var o = {
         flip: false, show_charge: true,
         hover_fac: -1, target_fac: -1, selected_fac: -1,
         outline: -1, dim: false,
+        sprite: -1, shadow: -1,
     };
     if (_opts != undefined) {
         var keys = variable_struct_get_names(_opts);
@@ -568,7 +606,12 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
     var chassis_col = (o.outline != -1) ? o.outline
                     : ((hull_frac > 0.5) ? p.cyan : ((hull_frac > 0.25) ? p.warn : p.danger));
 
-    draw_chassis(_car, _px, _py, _cs, chassis_col, o.flip);
+    // Painted art stands in for the wireframe entirely — the readouts and
+    // facility panels still draw over the top of it.
+    var has_art = (o.sprite != -1);
+    draw_car_art(_car, _px, _py, _cs, o.sprite, o.shadow, o.flip);
+
+    if (!has_art) draw_chassis(_car, _px, _py, _cs, chassis_col, o.flip);
 
     // Empty cells first, so facilities draw over the hatching. Cells that
     // don't exist at all are drawn as solid deck instead.
@@ -577,8 +620,9 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
             var qx = _px + gx * _cs, qy = _py + gy * _cs;
             if (!car_cell_exists(_car, gx, gy)) {
                 // Unbuilt deck only exists inside the body. A trailer column
-                // outside the 2x2 block is empty air, not plating.
-                if (gx >= car_body_x0(_car)) draw_deck_plate(qx, qy, qx + _cs, qy + _cs);
+                // outside the 2x2 block is empty air, not plating. With art
+                // underneath, the painted bodywork already reads as plating.
+                if (gx >= car_body_x0(_car) && !has_art) draw_deck_plate(qx, qy, qx + _cs, qy + _cs);
             } else if (car_at(_car, gx, gy) == -1) {
                 draw_empty_cell(qx, qy, qx + _cs, qy + _cs);
             }

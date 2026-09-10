@@ -3,7 +3,27 @@ var cb = global.cb;
 var W  = display_get_gui_width();
 var H  = display_get_gui_height();
 
-draw_backdrop();
+var scroll = (cb.paused || cb.over != "") ? 0 : cb.time;
+
+// ------------------------------------------------------------- the ground
+// Scrolling desert under the whole fight. This is drawn here rather than as a
+// room background layer because the combat scene lives in GUI space, and the
+// GUI pass paints over every room layer — a background layer never shows.
+// Scaled to the GUI height at draw time, so the 1920x1080 source is untouched.
+var bg_rate  = 0.60;    // tile widths per second
+var bg_scrim = 0.55;    // darkening over the sand, so the UI keeps its contrast
+var bg_s  = H / sprite_get_height(Spr_BG_Scroll);
+var bg_w  = sprite_get_width(Spr_BG_Scroll) * bg_s;
+var bg_ox = sprite_get_xoffset(Spr_BG_Scroll) * bg_s;
+var bg_oy = sprite_get_yoffset(Spr_BG_Scroll) * bg_s;
+for (var bx = -frac(scroll * bg_rate) * bg_w; bx < W; bx += bg_w) {
+    draw_sprite_ext(Spr_BG_Scroll, 0, bx + bg_ox, bg_oy, bg_s, bg_s, 0, c_white, 1);
+}
+
+// Scrim, so the dark UI palette still reads over the sand.
+draw_set_alpha(bg_scrim);
+draw_rectangle_colour(0, 0, W, H, p.bg_grad, p.bg_grad, p.bg, p.bg, false);
+draw_set_alpha(1);
 
 // Screen shake on hits.
 var kx = 0, ky = 0;
@@ -12,6 +32,7 @@ if (cb.shake > 0) {
     ky = random_range(-cb.shake, cb.shake);
 }
 
+<<<<<<< Updated upstream
 // ---------------------------------------------------------------- the road
 // Scrolling tarmac under both rigs so the fight reads as happening at speed.
 // Printed as a road is on the atlas: a band of tarmac laid on the paper with
@@ -49,12 +70,18 @@ draw_set_alpha(0.5);
 draw_line_width_colour(0, road_y0 + 3, W, road_y0 + 3, 1, p.atlas_cream, p.atlas_cream);
 draw_line_width_colour(0, road_y1 - 3, W, road_y1 - 3, 1, p.atlas_cream, p.atlas_cream);
 draw_set_alpha(1);
+=======
+// The tarmac band, its violet edge rules and the scrolling lane dashes used to
+// live here. The scrolling desert above does that job now.
+>>>>>>> Stashed changes
 
 // ---------------------------------------------------------------- cars
 // Player.
 var lp = cb.layout_p;
 draw_car(cb.player, lp.px + kx, lp.py + ky, lp.cs, {
     flip: false,
+    sprite: Spr_Car_Postie,
+    shadow: Spr_Car_Postie_Shadow,
     show_charge: true,
     hover_fac: (hover_car == -1) ? hover_fac : -1,
     selected_fac: cb.sel_weapon,
