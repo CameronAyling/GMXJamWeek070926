@@ -8,6 +8,9 @@ var cb = global.cb;
 // real-time-with-pause.
 if (keyboard_check_pressed(vk_space) && cb.over == "") cb.paused = !cb.paused;
 
+// Always, even over and even paused — a frozen shake is a permanent vibration.
+combat_shake_decay(dt());
+
 if (cb.over == "" && !cb.paused) combat_update(dt());
 else if (cb.over != "") cb.over_t += dt();
 

@@ -1,0 +1,67 @@
+{
+  "seed": 515,
+  "fps": 60,
+  "total_frames": 460,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(515); return true;" },
+
+    "_note": { "gml": "return true;" },
+
+    "boot_fight": {
+      "gml": "run_new(); var c = global.run.car; var sp = car_find_space(c, fac(\"rep_1\").cells); if (is_array(sp)) car_place(c, \"rep_1\", sp[0], sp[1], 0); global.run.sector = 2; combat_begin(\"bandits\", false, false); return true;"
+    },
+    "in_combat": { "gml": "return (room == rm_combat);" },
+
+    "haz_rough":  { "gml": "global.cb.hz = hazard(\"rough\");        return true;" },
+    "haz_acid":   { "gml": "global.cb.hz = hazard(\"acidrain\");     return true;" },
+    "haz_dust":   { "gml": "global.cb.hz = hazard(\"duststorm\");    return true;" },
+    "haz_static": { "gml": "global.cb.hz = hazard(\"interference\"); return true;" },
+    "haz_climb":  { "gml": "global.cb.hz = hazard(\"climb\");        return true;" },
+    "haz_clear":  { "gml": "global.cb.hz = undefined;              return true;" },
+
+    "stress": {
+      "gml": "var cb = global.cb; var c = cb.player; c.harpoon = 8; for (var e = 0; e < array_length(cb.enemies); e++) cb.enemies[e].harpoon = 5; for (var i = 0; i < array_length(c.facs); i++) { var k = i mod 4; if (k == 0) c.facs[i].st.fire = 9; if (k == 1) c.facs[i].st.elec = 9; if (k == 2) c.facs[i].st.acid = 9; if (k == 3) { c.facs[i].st.oil = 9; c.facs[i].hp = 0; } } for (var d = 0; d < array_length(cb.drones); d++) cb.drones[d].fac = d; combat_pop(cb.layout_p.px + 40, cb.layout_p.py - 20, \"-7\", global.PAL.danger); return true;"
+    },
+    "wreck_one": {
+      "gml": "var cb = global.cb; if (array_length(cb.enemies) == 0) return -1; cb.enemies[0].hull = 0; return 1;"
+    },
+    "boss_fight": {
+      "gml": "run_new(); global.run.sector = 3; combat_begin(\"corps\", false, true); return true;"
+    },
+    "sensors_on": {
+      "gml": "var c = global.run.car; var sp = car_find_space(c, fac(\"sen_1\").cells); if (is_array(sp)) car_place(c, \"sen_1\", sp[0], sp[1], 0); return car_has_sensors(c);"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot_fight"] },
+    { "frame": 60, "assert": { "id": "in_combat", "name": "the fight screen is up", "expect": true } },
+
+    { "frame": 66,  "code": ["stress"] },
+    { "frame": 74,  "assert": { "id": "in_combat", "name": "and survives a rig full of status effects", "expect": true } },
+
+    { "frame": 80,  "code": ["haz_rough"] },
+    { "frame": 88,  "assert": { "id": "in_combat", "name": "draws inside ROUGH GOING", "expect": true } },
+    { "frame": 94,  "code": ["haz_acid"] },
+    { "frame": 102, "assert": { "id": "in_combat", "name": "draws inside ACID RAIN", "expect": true } },
+    { "frame": 108, "code": ["haz_dust"] },
+    { "frame": 116, "assert": { "id": "in_combat", "name": "draws inside a DUST STORM", "expect": true } },
+    { "frame": 122, "code": ["haz_static"] },
+    { "frame": 130, "assert": { "id": "in_combat", "name": "draws inside a STATIC FIELD", "expect": true } },
+    { "frame": 136, "code": ["haz_climb"] },
+    { "frame": 144, "assert": { "id": "in_combat", "name": "draws on THE LONG CLIMB", "expect": true } },
+    { "frame": 150, "screenshot": "combat_hazard.png" },
+
+    { "frame": 156, "code": ["wreck_one"] },
+    { "frame": 164, "assert": { "id": "in_combat", "name": "and with a wreck on the road", "expect": true } },
+    { "frame": 170, "code": ["haz_clear"] },
+    { "frame": 178, "assert": { "id": "in_combat", "name": "and back in clear country", "expect": true } },
+
+    { "frame": 200, "code": ["boss_fight"] },
+    { "frame": 270, "assert": { "id": "in_combat", "name": "the finale draws too", "expect": true } },
+    { "frame": 280, "screenshot": "combat_boss.png" }
+  ]
+}

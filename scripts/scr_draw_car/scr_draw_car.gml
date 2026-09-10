@@ -334,8 +334,18 @@ function draw_deck_plate(_x1, _y1, _x2, _y2) {
 }
 
 /// Empty-cell hatching so unused grid space reads as "space you could fill".
-function draw_empty_cell(_x1, _y1, _x2, _y2) {
+/// On the painted deck the cell has to be picked out in light rather than in
+/// ink — a brown rule on a black roof is nothing at all.
+function draw_empty_cell(_x1, _y1, _x2, _y2, _dark = false) {
     var p = global.PAL;
+    if (_dark) {
+        draw_set_alpha(0.16);
+        draw_rectangle_colour(_x1, _y1, _x2, _y2, p.lift, p.lift, p.lift, p.lift, false);
+        draw_set_alpha(0.40);
+        draw_rectangle_colour(_x1, _y1, _x2, _y2, p.lift, p.lift, p.lift, p.lift, true);
+        draw_set_alpha(1);
+        return;
+    }
     draw_set_alpha(0.30);
     draw_rectangle_colour(_x1, _y1, _x2, _y2, p.bg, p.bg, p.bg, p.bg, false);
     draw_set_alpha(0.22);
@@ -380,7 +390,14 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
 
     // Fill each cell. Afflicted facilities fill harder so they read at a
     // glance — on paper that means laying down more ink, not more light.
-    var fill_a = (st_key == "") ? 0.42 : 0.74;
+    // On the painted roof the cells sit on near-black, so they fill harder and
+    // every line and glyph in them flips from ink to cream. On paper it stays
+    // as it was: a dark keyline plate under colour.
+    var dark = (variable_struct_exists(_opts, "dark") && _opts.dark);
+    if (dark) col = merge_colour(col, p.lift, 0.36);
+
+    var fill_a = dark ? ((st_key == "") ? 0.74 : 0.92)
+                      : ((st_key == "") ? 0.42 : 0.74);
     for (var c = 0; c < array_length(f.cells); c++) {
         var cx = _px + (f.ox + f.cells[c][0]) * _cs;
         var cy = _py + (f.oy + f.cells[c][1]) * _cs;
@@ -396,7 +413,7 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     }
     // One dark keyline plate under every colour fill, exactly how the atlas is
     // printed. Tinting the keyline per-facility instead just makes mud.
-    var keyl = p.atlas_ink;
+    var keyl = dark ? p.lift : p.atlas_ink;
     draw_set_alpha(pulse);
     for (var c = 0; c < array_length(f.cells); c++) {
         var lx = f.cells[c][0], ly = f.cells[c][1];
@@ -425,7 +442,7 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
 
             // A heavy inset rule in the effect's ink, doubled so it has the
             // weight of an overprinted warning box.
-            var sdk = merge_colour(scol, p.shade, 0.35);
+            var sdk = dark ? merge_colour(scol, p.lift, 0.45) : merge_colour(scol, p.shade, 0.35);
             draw_set_alpha(pulse);
             draw_rectangle_colour(cx + 4, cy + 4, cx + _cs - 4, cy + _cs - 4,
                                   sdk, sdk, sdk, sdk, true);
@@ -491,7 +508,11 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     var gy = _py + (f.oy + ext[1] * 0.5) * _cs;
     var gs = _cs * 0.30 * min(2, min(ext[0], ext[1]) * 0.85 + 0.35);
     draw_set_alpha(alive ? pulse : 0.4);
-    draw_fac_glyph(d.family, gx, gy, gs, alive ? merge_colour(col, p.shade, 0.45) : p.text_mute);
+    // The fill under the glyph is bright either way, so the glyph stays dark;
+    // only the dead-facility grey has to change side.
+    var glyph_col = alive ? (dark ? merge_colour(p.lift, col, 0.30) : merge_colour(col, p.shade, 0.45))
+                          : (dark ? merge_colour(p.lift, p.shade, 0.45) : p.text_mute);
+    draw_fac_glyph(d.family, gx, gy, gs, glyph_col);
     draw_set_alpha(1);
 
     // Tier pips, top-left of the footprint.
@@ -509,7 +530,8 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     if (hp_frac < 1) {
         var hcol = (hp_frac > 0.5) ? p.ok : ((hp_frac > 0.25) ? p.warn : p.danger);
         draw_set_alpha(0.35);
-        draw_rectangle_colour(hx1, hy, hx2, hy + 3, p.shade, p.shade, p.shade, p.shade, false);
+        var trc = dark ? p.lift : p.shade;
+        draw_rectangle_colour(hx1, hy, hx2, hy + 3, trc, trc, trc, trc, false);
         draw_set_alpha(1);
         if (hp_frac > 0) draw_rectangle_colour(hx1, hy, hx1 + (hx2 - hx1) * hp_frac, hy + 3, hcol, hcol, hcol, hcol, false);
     }
@@ -519,7 +541,8 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
         var cy2 = _py + f.oy * _cs + 1;
         var ccol = (f.charge >= 1) ? p.amber : merge_colour(p.cyan, p.edge, 0.3);
         draw_set_alpha(0.30);
-        draw_rectangle_colour(hx1, cy2, hx2, cy2 + 3, p.shade, p.shade, p.shade, p.shade, false);
+        var trc2 = dark ? p.lift : p.shade;
+        draw_rectangle_colour(hx1, cy2, hx2, cy2 + 3, trc2, trc2, trc2, trc2, false);
         draw_set_alpha(active ? 1 : 0.35);
         draw_rectangle_colour(hx1, cy2, hx1 + (hx2 - hx1) * clamp(f.charge, 0, 1), cy2 + 3, ccol, ccol, ccol, ccol, false);
         draw_set_alpha(1);
@@ -544,7 +567,7 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
         draw_set_alpha(1);
     } else if (!f.powered) {
         draw_label(_px + (f.ox + ext[0] * 0.5) * _cs, _py + (f.oy + ext[1]) * _cs - 15,
-                   "OFF", p.text_mute, fa_center, fa_middle, fnt_small);
+                   "OFF", dark ? p.lift : p.text_mute, fa_center, fa_middle, fnt_small);
     }
 }
 
@@ -555,34 +578,74 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
 /// different sizes — the shadow's is larger, with the blur trailing down and
 /// right — so drawing the pair from the same corner at the same scale puts the
 /// shadow under the body with its offset already baked in.
+/// The art is placed FROM the grid, not the other way round: the sprite is
+/// scaled and offset so its roof panel lands exactly on the cell grid, and the
+/// cab, bonnet and wheels hang off wherever that puts them. The grid stays the
+/// authority, so hit-testing is untouched — and a facility always sits on the
+/// deck rather than floating over a wing.
+///
+/// The two axes scale independently. The roof is roughly square and the rig
+/// grows to twice as wide as it is tall, so a uniform scale would either
+/// overflow the vehicle or shrink the cells to nothing; letting the van
+/// lengthen with the chassis is both the readable choice and the honest one —
+/// you really are bolting more deck onto it.
 function draw_car_art(_car, _px, _py, _cs, _sprite, _shadow, _flip) {
     if (_sprite == -1) return;
 
-    var pad   = _cs * 0.30;
-    var nose  = _cs * 0.9;
-    var wheel = _cs * 0.15 * 1.55;      // how far a wheel slab pokes past the flank
-    var x0    = car_body_x0(_car);
+    var roof = variable_struct_exists(_car, "art_roof")
+             ? _car.art_roof : [0, 0, 1, 1];
 
-    // The chassis footprint, matching draw_chassis: body + bonnet + wheels.
-    var fx1 = _px + x0 * _cs - pad - (_flip ? nose : 0);
-    var fx2 = _px + _car.gw * _cs + pad + (_flip ? 0 : nose);
-    var fy1 = _py - pad - wheel;
-    var fy2 = _py + _car.gh * _cs + pad + wheel;
+    // Where the deck is on screen.
+    var gx1 = _px, gy1 = _py;
+    var gx2 = _px + _car.gw * _cs, gy2 = _py + _car.gh * _cs;
 
-    // Contain rather than stretch — grids are not all the sprite's aspect.
+    // Scale the whole sprite so its roof fraction covers exactly that.
+    var rw = max(0.01, roof[2] - roof[0]);
+    var rh = max(0.01, roof[3] - roof[1]);
+    var dw = (gx2 - gx1) / rw;
+    var dh = (gy2 - gy1) / rh;
+    var dx = gx1 - roof[0] * dw;
+    var dy = gy1 - roof[1] * dh;
+
     var sw = sprite_get_width(_sprite), sh = sprite_get_height(_sprite);
-    var s  = min((fx2 - fx1) / sw, (fy2 - fy1) / sh);
-    var dw = sw * s, dh = sh * s;
-    var dx = fx1 + ((fx2 - fx1) - dw) * 0.5;
-    var dy = fy1 + ((fy2 - fy1) - dh) * 0.5;
+    var xs = dw / sw, ys = dh / sh;
 
     // Respect any alpha the caller set — wrecks are drawn dimmed.
     var a  = draw_get_alpha();
     var ox = _flip ? (dx + dw) : dx;
-    var xs = _flip ? -s : s;
+    if (_flip) xs = -xs;
 
-    if (_shadow != -1) draw_sprite_ext(_shadow, 0, ox, dy, xs, s, 0, c_white, a);
-    draw_sprite_ext(_sprite, 0, ox, dy, xs, s, 0, c_white, a);
+    var p  = global.PAL;
+    var gs = ground_style();
+
+    // A contact patch under the body. The shadow art alone is a silhouette
+    // offset off to one side, which reads as the rig hovering over the sand —
+    // this is the bit that actually plants it.
+    // Measured off the whole drawn vehicle, not the roof — anchoring it to the
+    // deck left the patch under the back half and the bonnet still hovering.
+    if (gs.contact > 0) {
+        var ccx = dx + dw * 0.5;
+        var chw = dw * 0.40;
+        var cyb = dy + dh * 0.82;
+        var cht = dh * 0.30;
+        for (var b = 2; b >= 0; b--) {
+            draw_set_alpha(a * gs.contact * (b == 0 ? 1 : 0.30));
+            var sprd = b * dh * 0.035;
+            draw_ellipse_colour(ccx - chw - sprd, cyb - cht - sprd,
+                                ccx + chw + sprd, cyb + sprd,
+                                p.shade, p.shade, false);
+        }
+        draw_set_alpha(a);
+    }
+
+    // The shadow art is a solid mid-brown silhouette, so it has to be inked
+    // down and made translucent before it behaves like a shadow.
+    if (_shadow != -1) {
+        var shc = merge_colour(c_white, p.shade, gs.sh_dark);
+        draw_sprite_ext(_shadow, 0, ox, dy + dh * gs.sh_off, xs, ys, 0, shc, a * gs.sh_a);
+    }
+    draw_sprite_ext(_sprite, 0, ox, dy, xs, ys, 0, c_white, a);
+    draw_set_alpha(a);
 }
 
 /// Draw a whole car. `_opts` fields: flip, show_charge, hover_fac, target_fac,
@@ -592,8 +655,11 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
     var o = {
         flip: false, show_charge: true,
         hover_fac: -1, target_fac: -1, selected_fac: -1,
-        outline: -1, dim: false,
-        sprite: -1, shadow: -1,
+        outline: -1, dim: false, dark: false,
+        // Default to whatever bodywork the car carries, so a caller only has to
+        // name a sprite when it wants to override one.
+        sprite: variable_struct_exists(_car, "art")        ? _car.art        : -1,
+        shadow: variable_struct_exists(_car, "art_shadow") ? _car.art_shadow : -1,
     };
     if (_opts != undefined) {
         var keys = variable_struct_get_names(_opts);
@@ -608,7 +674,13 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
 
     // Painted art stands in for the wireframe entirely — the readouts and
     // facility panels still draw over the top of it.
+    // The painted deck is a near-black cargo roof, the wireframe deck is cream
+    // paper. Everything drawn into the cells has to know which, because the
+    // dark keylines and dark glyphs that make a facility read on paper vanish
+    // completely against the roof.
     var has_art = (o.sprite != -1);
+    o.dark = has_art;
+
     draw_car_art(_car, _px, _py, _cs, o.sprite, o.shadow, o.flip);
 
     if (!has_art) draw_chassis(_car, _px, _py, _cs, chassis_col, o.flip);
@@ -624,7 +696,7 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
                 // underneath, the painted bodywork already reads as plating.
                 if (gx >= car_body_x0(_car) && !has_art) draw_deck_plate(qx, qy, qx + _cs, qy + _cs);
             } else if (car_at(_car, gx, gy) == -1) {
-                draw_empty_cell(qx, qy, qx + _cs, qy + _cs);
+                draw_empty_cell(qx, qy, qx + _cs, qy + _cs, has_art);
             }
         }
     }
@@ -633,16 +705,29 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
         draw_facility(_car, i, _px, _py, _cs, o);
     }
 
-    // Selection and targeting rings sit above everything.
+    // Selection and targeting rings sit above everything. On the dark roof the
+    // ink-coloured hover ring is invisible, so it goes cream instead.
     if (o.selected_fac >= 0 && o.selected_fac < array_length(_car.facs)) {
-        draw_fac_ring(_car, o.selected_fac, _px, _py, _cs, p.cyan, false);
+        var selc = has_art ? merge_colour(p.cyan, p.lift, 0.45) : p.cyan;
+        draw_fac_ring(_car, o.selected_fac, _px, _py, _cs, selc, false);
     }
     if (o.hover_fac >= 0 && o.hover_fac < array_length(_car.facs)) {
-        draw_fac_ring(_car, o.hover_fac, _px, _py, _cs, p.text, false);
+        draw_fac_ring(_car, o.hover_fac, _px, _py, _cs, has_art ? p.lift : p.text, false);
     }
     if (o.target_fac >= 0 && o.target_fac < array_length(_car.facs)) {
         draw_fac_ring(_car, o.target_fac, _px, _py, _cs, p.magenta, true);
     }
+}
+
+/// How far above the grid the painted bodywork reaches, in pixels — zero for a
+/// car drawn as a cutaway. Callers stack their readouts clear of this, because
+/// the art is hung off the deck and a big rig's roofline now climbs well above
+/// the top row of cells.
+function car_art_rise(_car, _cs) {
+    if (!variable_struct_exists(_car, "art") || _car.art == -1) return 0;
+    var roof = variable_struct_exists(_car, "art_roof") ? _car.art_roof : [0, 0, 1, 1];
+    var rh = max(0.05, roof[3] - roof[1]);
+    return roof[1] * (_car.gh * _cs / rh);
 }
 
 /// Highlight ring around a facility's bounding box. `_dashed` marks a target.

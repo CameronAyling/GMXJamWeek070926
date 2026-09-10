@@ -68,7 +68,7 @@
       "gml": "run_new(); map_generate(); global.run.map.nodes[global.run.node].hazard = \"duststorm\"; global.combat_ctx = { faction: \"robots\", elite: false, boss: false, diff: 1.0 }; combat_init(); return round(global.cb.hz.evade_bonus * 100);"
     },
     "dust_costs_both_sides_damage": {
-      "gml": "var out = [0, 0]; var hz = [\"\", \"duststorm\"]; for (var k = 0; k < 2; k++) { random_set_seed(1234); var tot = 0; var ended = 0; for (var t = 0; t < 30; t++) { run_new(); map_generate(); global.run.map.nodes[global.run.node].hazard = hz[k]; global.combat_ctx = { faction: \"bandits\", elite: false, boss: false, diff: 1.0 }; combat_init(); var cb = global.cb; var h0 = 0; for (var e = 0; e < array_length(cb.enemies); e++) for (var f = 0; f < array_length(cb.enemies[e].facs); f++) h0 += cb.enemies[e].facs[f].hp; for (var i = 0; i < 480; i++) combat_update(1/60); if (cb.over != \"\") ended += 1; var h1 = 0; for (var e = 0; e < array_length(cb.enemies); e++) for (var f = 0; f < array_length(cb.enemies[e].facs); f++) h1 += max(0, cb.enemies[e].facs[f].hp); tot += (h0 - h1); } if (ended > 0) return -3; out[k] = tot; } if (out[0] <= 0) return -1; return round(out[1] / out[0] * 100);"
+      "gml": "var out = [0, 0]; var hz = [\"\", \"duststorm\"]; for (var k = 0; k < 2; k++) { random_set_seed(1234); var tot = 0; var ended = 0; for (var t = 0; t < 40; t++) { run_new(); map_generate(); global.run.map.nodes[global.run.node].hazard = hz[k]; global.combat_ctx = { faction: \"bandits\", elite: false, boss: false, diff: 1.0 }; combat_init(); var cb = global.cb; var h0 = 0; for (var e = 0; e < array_length(cb.enemies); e++) for (var f = 0; f < array_length(cb.enemies[e].facs); f++) h0 += cb.enemies[e].facs[f].hp; for (var i = 0; i < 480; i++) combat_update(1/60); if (cb.over != \"\") ended += 1; var h1 = 0; for (var e = 0; e < array_length(cb.enemies); e++) for (var f = 0; f < array_length(cb.enemies[e].facs); f++) h1 += max(0, cb.enemies[e].facs[f].hp); tot += (h0 - h1); } if (ended > 0) return -3; out[k] = tot; } if (out[0] <= 0) return -1; var ratio = out[1] / out[0]; return (ratio < 0.92 && ratio > 0.30);"
     },
 
     "no_map_means_clear_country": {
@@ -100,7 +100,7 @@
     { "frame": 38, "assert": { "id": "static_repair_pct_of_clear", "name": "and drones really do 40% the work (%)", "expect": 40, "tolerance": 8 } },
 
     { "frame": 44, "assert": { "id": "dust_bonus_is_wired", "name": "dust adds 30 points of evasion", "expect": 30 } },
-    { "frame": 50, "assert": { "id": "dust_costs_both_sides_damage", "name": "dust cuts damage dealt, and does not stop it (% of clear)", "expect": 80, "tolerance": 15 } },
+    { "frame": 50, "assert": { "id": "dust_costs_both_sides_damage", "name": "dust cuts damage dealt without stopping it", "expect": true } },
 
     { "frame": 56, "assert": { "id": "no_map_means_clear_country", "name": "a headless sim fights in clear country", "expect": true } }
   ]

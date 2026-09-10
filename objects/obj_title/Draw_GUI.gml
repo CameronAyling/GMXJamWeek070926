@@ -28,7 +28,7 @@ for (var i = 0; i < array_length(cover_badges); i++) {
 }
 
 // ---------------------------------------------------------------- masthead
-draw_label(vpx, 62, "GLOBAL INTERSTATE  ·  MOTORISTS' ATLAS  ·  47TH EDITION",
+draw_label(vpx, 62, "GENE INCORPORATED  ·  MOTORISTS' ATLAS  ·  47TH EDITION",
            p.text_dim, fa_center, fa_middle, fnt_small);
 
 draw_glow_text(vpx, 126, "FASTER THAN FUEL", p.atlas_ink, fa_center, fa_middle, fnt_title);
@@ -122,7 +122,7 @@ draw_set_alpha(1);
 draw_label(gix, giy, "GI", p.atlas_cream, fa_center, fa_middle, fnt_term_big);
 
 draw_label(30, H - 30, "LEGALLY NOT A MONOPOLY", p.text_mute, fa_left, fa_middle, fnt_small);
-draw_label(W - 30, H - 30, "GLOBAL INTERSTATE  ·  EVERYTHING TOMORROW NEEDS",
+draw_label(W - 30, H - 30, "GENE INCORPORATED  ·  EVERYTHING TOMORROW NEEDS",
            p.text_dim, fa_right, fa_middle, fnt_small);
 
 ui_draw_tooltip();

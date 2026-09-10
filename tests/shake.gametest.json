@@ -1,0 +1,40 @@
+{
+  "seed": 313, "fps": 60, "total_frames": 400, "stop_on_error": true,
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(313); return true;" },
+    "fight":  { "gml": "run_new(); global.run.sector = 2; combat_begin(\"bandits\", false, false); return true;" },
+    "in_combat": { "gml": "return (room == rm_combat);" },
+
+    "end_it_shaking": {
+      "gml": "var cb = global.cb; cb.shake = 8; cb.over = \"win\"; cb.over_t = 0; return cb.shake;"
+    },
+    "shake_now": { "gml": "return round(global.cb.shake * 100);" },
+
+    "pause_shaking": {
+      "gml": "var cb = global.cb; cb.over = \"\"; cb.paused = true; cb.shake = 8; return cb.shake;"
+    },
+
+    "live_shake_still_decays": {
+      "gml": "var cb = global.cb; cb.over = \"\"; cb.paused = false; cb.shake = 8; return cb.shake;"
+    },
+    "decay_is_not_doubled": {
+      "gml": "return round(global.cb.shake * 100);"
+    }
+  },
+  "timeline": [
+    { "frame": 0,   "code": ["reseed"] },
+    { "frame": 2,   "code": ["fight"] },
+    { "frame": 60,  "assert": { "id": "in_combat", "name": "in the fight", "expect": true } },
+
+    { "frame": 64,  "code":   ["end_it_shaking"] },
+    { "frame": 66,  "assert": { "id": "shake_now", "name": "shaking hard as the fight ends (x100)", "expect": 800, "tolerance": 260 } },
+    { "frame": 130, "assert": { "id": "shake_now", "name": "and settles once it is over", "expect": 0 } },
+
+    { "frame": 140, "code":   ["pause_shaking"] },
+    { "frame": 200, "assert": { "id": "shake_now", "name": "a shake taken into a pause also settles", "expect": 0 } },
+
+    { "frame": 210, "code":   ["live_shake_still_decays"] },
+    { "frame": 222, "assert": { "id": "decay_is_not_doubled", "name": "mid-fight it decays at the old rate, not twice (x100)", "expect": 440, "tolerance": 90 } },
+    { "frame": 300, "assert": { "id": "shake_now", "name": "and reaches rest mid-fight too", "expect": 0 } }
+  ]
+}

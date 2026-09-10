@@ -117,6 +117,28 @@ function hazard_region_contains(_reg, _px, _py) {
     return (d <= hazard_region_radius(_reg, a));
 }
 
+/// Where a region's name could go, best first, as centre-top anchors for
+/// label_place. Eight bearings hugging the blob, the same eight again further
+/// out, and dead centre as a last resort — enough choices that a crowded
+/// corner of the atlas can still find clear paper.
+///
+/// Shared with the tests on purpose: the check that names don't land on stops
+/// has to be checking the same geometry the map actually draws.
+function hazard_label_slots(_reg, _w, _h) {
+    var out = [];
+    var bear = [90, 270, 180, 0, 45, 135, 225, 315];
+    for (var pass = 0; pass < 2; pass++) {
+        for (var i = 0; i < array_length(bear); i++) {
+            var a = bear[i];
+            var rr = hazard_region_radius(_reg, a) + 12 + pass * 28;
+            array_push(out, [_reg.cx + lengthdir_x(rr, a),
+                             _reg.cy + lengthdir_y(rr, a) - _h * 0.5]);
+        }
+    }
+    array_push(out, [_reg.cx, _reg.cy - _h * 0.5]);
+    return out;
+}
+
 /// The region outline as a list of [x, y], for drawing.
 function hazard_region_points(_reg, _steps = 30) {
     var pts = [];

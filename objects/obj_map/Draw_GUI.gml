@@ -4,6 +4,21 @@ var H = display_get_gui_height();
 var r = global.run;
 var m = r.map;
 
+// Nothing has been inked yet this frame. Everything that draws free-floating
+// text below registers its rectangle, so later labels can move out of the way.
+// Priority is draw order, and it runs: fixed chrome, then place names, then
+// the dead-line, then hazard names last — a weather label can afford to
+// shuffle, a stop's name cannot.
+labels_begin();
+
+// The printed page area. Regions and labels are kept inside it.
+var PX0 = 24, PX1 = 1256, PY0 = 122, PY1 = 686;
+
+// --- fixed chrome claims its space before anything can land on it -----------
+label_reserve(36, 122, 360, 146);      // sector name, top-left
+label_reserve(36, 648, 900, 674);      // the log line along the bottom
+label_reserve(998, 120, 1252, 168);    // the RE-PACK THE RIG key
+
 // ---------------------------------------------------------------- the atlas
 // Spr_Map_01_Base is the whole printed page — masthead, stat swatches, border
 // and footer are all baked in at 1920x1080. Everything below is drawn into the
@@ -17,20 +32,24 @@ draw_sprite_ext(Spr_Map_01_Base, 0, 0, 0, sx, sy, 0, c_white, 1);
 // atlas prints marsh or scree under the network rather than over it. The
 // outline is sampled from the same radius function that decides which stops
 // are inside, so what you see is exactly what bites.
+// A region may run past the page — there are no stops out there, so trimming
+// the drawing to the border changes nothing about what is affected, and reads
+// as the weather carrying on off the edge.
 if (variable_struct_exists(m, "hazards")) {
-    // The printed page area. A region may run past it — there are no stops out
-    // there, so trimming the drawing to the border changes nothing about what
-    // is affected, and reads as the weather carrying on off the edge.
-    var PX0 = 24, PX1 = 1256, PY0 = 122, PY1 = 686;
-
     for (var hi = 0; hi < array_length(m.hazards); hi++) {
         var reg  = m.hazards[hi];
         var hcol = hazard_colour(reg.id);
         var pts  = hazard_region_points(reg, 40);
 
-        // Trim the outline to the page.
+        // Trim the outline to the page, remembering which points had to be
+        // pulled in. A run of pulled-in points is not a real boundary — it's
+        // where the weather leaves the sheet — so it gets no edge drawn later.
+        var cut = array_create(array_length(pts), false);
         for (var k = 0; k < array_length(pts); k++) {
-            pts[k] = [clamp(pts[k][0], PX0, PX1), clamp(pts[k][1], PY0, PY1)];
+            var rx2 = clamp(pts[k][0], PX0, PX1);
+            var ry2 = clamp(pts[k][1], PY0, PY1);
+            cut[k] = (rx2 != pts[k][0]) || (ry2 != pts[k][1]);
+            pts[k] = [rx2, ry2];
         }
 
         // Wash. The alpha has to ride on the vertices — draw_set_alpha does not
@@ -57,17 +76,19 @@ if (variable_struct_exists(m, "hazards")) {
             }
         }
 
-        // Edge: a heavier boundary so the region reads as a mapped area.
+        // Edge: a heavier boundary so the region reads as a mapped area. Where
+        // the shape ran off the sheet there is no boundary to draw — leaving it
+        // open is what makes it read as continuing past the border rather than
+        // stopping in a suspiciously straight line.
         draw_set_alpha(0.70);
         for (var k = 0; k < array_length(pts); k++) {
-            var a1 = pts[k], b1 = pts[(k + 1) mod array_length(pts)];
+            var k2 = (k + 1) mod array_length(pts);
+            if (cut[k] && cut[k2]) continue;
+            var a1 = pts[k], b1 = pts[k2];
             draw_line_width_colour(a1[0], a1[1], b1[0], b1[1], 2, hcol, hcol);
         }
         draw_set_alpha(1);
-
-        // Name it along the top edge of the blob, kept on the page.
-        var lab_y = clamp(reg.cy - hazard_region_radius(reg, 90) - 13, PY0 + 4, PY1 - 16);
-        draw_map_label(clamp(reg.cx, PX0 + 60, PX1 - 60), lab_y, hazard(reg.id).name, hcol);
+        // The name is drawn much later, once the stops have claimed their space.
     }
 }
 
@@ -90,6 +111,12 @@ for (var i = 0; i < array_length(m.edges); i++) {
     draw_line_width_colour(a.px, a.py, mxp, myp, live ? 3 : 2, col, col);
     draw_line_width_colour(mxp, myp, b2.px, b2.py, live ? 3 : 2, col, col);
     draw_set_alpha(1);
+
+    // A road isn't a hard obstacle for text — the cream halo carries a name
+    // over one fine — but given a choice, a label should sit beside a road
+    // rather than along it.
+    label_avoid_line(a.px, a.py, mxp, myp);
+    label_avoid_line(mxp, myp, b2.px, b2.py);
 }
 
 // ---------------------------------------------------------------- dead-line
@@ -97,13 +124,17 @@ for (var i = 0; i < array_length(m.edges); i++) {
 // it is time you no longer have: hatched out, and struck off the timetable.
 var cvx = map_deadline_x();
 if (cvx > MAP_X0 - 40) {
-    var top = 176, bot = 648;
+    // Full height of the printed page. A schedule doesn't stop at the top row
+    // of stops — the whole of the country behind it is time you've lost, so
+    // the rule runs from the border to the border.
+    var top = PY0, bot = PY1;
     draw_set_alpha(0.16);
-    draw_rectangle_colour(30, top, cvx, bot, p.atlas_alert, p.atlas_alert,
-                                             p.atlas_alert, p.atlas_alert, false);
+    draw_rectangle_colour(PX0, top, cvx, bot, p.atlas_alert, p.atlas_alert,
+                                              p.atlas_alert, p.atlas_alert, false);
     draw_set_alpha(0.30);
-    for (var hy = top; hy < bot; hy += 15) {
-        draw_line_width_colour(max(30, cvx - 55), hy, cvx, hy - 28, 2, p.atlas_alert, p.atlas_alert);
+    for (var hy = top; hy < bot + 28; hy += 15) {
+        draw_line_width_colour(max(PX0, cvx - 55), min(bot, hy), cvx, max(top, hy - 28),
+                               2, p.atlas_alert, p.atlas_alert);
     }
     draw_set_alpha(1);
 
@@ -116,12 +147,26 @@ if (cvx > MAP_X0 - 40) {
         draw_line_width_colour(cvx, ty, cvx - tw2, ty, 2, p.atlas_alert, p.atlas_alert);
     }
 
-    draw_label(cvx - 16, top + 6, "THE DEAD-LINE", p.atlas_alert, fa_right, fa_top, fnt_small);
-    draw_label(cvx - 16, top + 20, "BEHIND SCHEDULE", p.atlas_alert, fa_right, fa_top, fnt_small);
+    // The caption sits just below the top border rather than at the old band
+    // edge, so it still reads as a margin note on the rule.
+    var dly = top + 34;
+    // Haloed like every other name on the page — it sits over its own hatching
+    // and goes muddy without it.
+    draw_map_label(cvx - 16, dly, "THE DEAD-LINE", p.atlas_alert, fa_right);
+    draw_map_label(cvx - 16, dly + 14, "BEHIND SCHEDULE", p.atlas_alert, fa_right);
+    var dlw = label_measure("BEHIND SCHEDULE", fnt_small);
+    label_reserve(cvx - 20 - dlw[0], dly - 2, cvx - 12, dly + 16 + dlw[1]);
 }
 
 // ---------------------------------------------------------------- nodes
 var ICON = 46;   // on-screen badge size; the art is 68px square
+
+// Every badge claims its circle first, so no name can be dropped onto one.
+for (var i = 0; i < array_length(m.nodes); i++) {
+    var bn = m.nodes[i];
+    var br = (i == r.node) ? ICON * 0.98 : ICON * 0.52;
+    label_reserve(bn.px - br, bn.py - br, bn.px + br, bn.py + br);
+}
 
 for (var i = 0; i < array_length(m.nodes); i++) {
     var n = m.nodes[i];
@@ -204,8 +249,18 @@ for (var i = 0; i < array_length(m.nodes); i++) {
 
     // Label under the badge.
     if (known) {
-        draw_map_label(n.px, n.py + ICON * 0.66, map_node_title(n),
-                       lost ? p.atlas_dim : p.atlas_ink);
+        // Under the badge by preference, but a crowded corner of the atlas can
+        // push a name above it or out to one side rather than onto a neighbour.
+        var ttl = map_node_title(n);
+        var tsz = label_measure(ttl, fnt_small);
+        var slot = label_place(tsz[0], tsz[1], [
+            [n.px, n.py + ICON * 0.66],                       // under it
+            [n.px, n.py - ICON * 0.60 - tsz[1]],              // over it
+            [n.px, n.py + ICON * 0.66 + tsz[1] + 3],          // one line lower
+            [n.px + ICON * 0.55 + tsz[0] * 0.5, n.py - tsz[1] * 0.5],   // right
+            [n.px - ICON * 0.55 - tsz[0] * 0.5, n.py - tsz[1] * 0.5],   // left
+        ]);
+        draw_map_label(slot[0], slot[1], ttl, lost ? p.atlas_dim : p.atlas_ink);
     }
 
     if (lost) {
@@ -214,6 +269,22 @@ for (var i = 0; i < array_length(m.nodes); i++) {
     } else if (done) {
         draw_line_width_colour(n.px + 12, n.py - 15, n.px + 17, n.py - 10, 3, p.atlas_ink, p.atlas_ink);
         draw_line_width_colour(n.px + 17, n.py - 10, n.px + 25, n.py - 22, 3, p.atlas_ink, p.atlas_ink);
+    }
+}
+
+// ------------------------------------------------------------ hazard names
+// Last, so a weather name is the thing that moves when the page is crowded.
+// Tried around the edge of its own blob and then in the middle of it, always
+// preferring somewhere that isn't sitting across a road.
+if (variable_struct_exists(m, "hazards")) {
+    for (var hi = 0; hi < array_length(m.hazards); hi++) {
+        var reg = m.hazards[hi];
+        var hnm = hazard(reg.id).name;
+        var hsz = label_measure(hnm, fnt_small);
+        var hslot = label_place(hsz[0], hsz[1], hazard_label_slots(reg, hsz[0], hsz[1]));
+        draw_map_label(clamp(hslot[0], PX0 + hsz[0] * 0.5 + 4, PX1 - hsz[0] * 0.5 - 4),
+                       clamp(hslot[1], PY0 + 4, PY1 - hsz[1] - 4),
+                       hnm, hazard_colour(reg.id));
     }
 }
 
@@ -290,6 +361,19 @@ if (r.sector != 1) {
 draw_map_label(42, 128, string_upper(sector_name(r.sector)), p.atlas_ink, fa_left);
 if (array_length(r.log) > 0) {
     draw_map_label(42, 654, r.log[array_length(r.log) - 1], p.atlas_road, fa_left);
+}
+
+// --------------------------------------------------------- hazard readout
+// Hovering anywhere in the bad country explains it, so the shading on the page
+// never has to be decoded from a legend.
+if (ev == undefined && hover_node == -1 && variable_struct_exists(m, "hazards")) {
+    for (var hi = 0; hi < array_length(m.hazards); hi++) {
+        var reg = m.hazards[hi];
+        if (!hazard_region_contains(reg, ui_mx(), ui_my())) continue;
+        var hz = hazard(reg.id);
+        ui_tooltip(hz.name + "   ·   " + hazard_effect_line(reg.id), hz.blurb);
+        break;
+    }
 }
 
 // ------------------------------------------------------------- the rig

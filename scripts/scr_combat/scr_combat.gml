@@ -417,10 +417,22 @@ function combat_resolve(_shot) {
 
 // --- per-frame simulation ---------------------------------------------------
 
+/// Wind the screen shake down.
+///
+/// This is presentation, not simulation, so it lives outside combat_update and
+/// runs every frame regardless. It used to decay inside the update, which is
+/// only called while the fight is live and unpaused — so the hit that ended a
+/// fight left the shake frozen at full strength and the rig buzzed on the
+/// results screen forever. Pausing on a hit did the same thing.
+function combat_shake_decay(_dt) {
+    if (!variable_global_exists("cb") || !is_struct(global.cb)) return;
+    var cb = global.cb;
+    if (cb.shake > 0) cb.shake = max(0, cb.shake - _dt * 18);
+}
+
 function combat_update(_dt) {
     var cb = global.cb;
     cb.time += _dt;
-    if (cb.shake > 0) cb.shake = max(0, cb.shake - _dt * 18);
 
     // --- statuses, shields, regen, clocks ---
     var cars = [-1];

@@ -3,6 +3,10 @@ var cb = global.cb;
 var W  = display_get_gui_width();
 var H  = display_get_gui_height();
 
+// Reset the ink register for this frame — without this the reservations from
+// every previous frame pile up and eventually nothing can be placed.
+labels_begin();
+
 var scroll = (cb.paused || cb.over != "") ? 0 : cb.time;
 
 // ------------------------------------------------------------- the ground
@@ -11,7 +15,7 @@ var scroll = (cb.paused || cb.over != "") ? 0 : cb.time;
 // GUI pass paints over every room layer — a background layer never shows.
 // Scaled to the GUI height at draw time, so the 1920x1080 source is untouched.
 var bg_rate  = 0.60;    // tile widths per second
-var bg_scrim = 0.55;    // darkening over the sand, so the UI keeps its contrast
+var gst      = ground_style();
 var bg_s  = H / sprite_get_height(Spr_BG_Scroll);
 var bg_w  = sprite_get_width(Spr_BG_Scroll) * bg_s;
 var bg_ox = sprite_get_xoffset(Spr_BG_Scroll) * bg_s;
@@ -20,10 +24,24 @@ for (var bx = -frac(scroll * bg_rate) * bg_w; bx < W; bx += bg_w) {
     draw_sprite_ext(Spr_BG_Scroll, 0, bx + bg_ox, bg_oy, bg_s, bg_s, 0, c_white, 1);
 }
 
-// Scrim, so the dark UI palette still reads over the sand.
-draw_set_alpha(bg_scrim);
-draw_rectangle_colour(0, 0, W, H, p.bg_grad, p.bg_grad, p.bg, p.bg, false);
-draw_set_alpha(1);
+// The old flat 0.55 wash of paper colour over the whole photograph is what
+// made the desert look bleached. Contrast for the UI comes from the edges now
+// — a warm vignette — with at most a light haze across the middle.
+if (gst.scrim > 0) {
+    draw_set_alpha(gst.scrim);
+    draw_rectangle_colour(0, 0, W, H, p.bg_grad, p.bg_grad, p.bg, p.bg, false);
+    draw_set_alpha(1);
+}
+if (gst.vignette > 0) {
+    var vg = 150;
+    draw_set_alpha(gst.vignette);
+    draw_rectangle_colour(0, 0, W, vg, p.shade, p.shade, p.bg, p.bg, false);
+    draw_rectangle_colour(0, H - vg, W, H, p.bg, p.bg, p.shade, p.shade, false);
+    draw_set_alpha(gst.vignette * 0.7);
+    draw_rectangle_colour(0, 0, vg, H, p.shade, p.bg, p.bg, p.shade, false);
+    draw_rectangle_colour(W - vg, 0, W, H, p.bg, p.shade, p.shade, p.bg, false);
+    draw_set_alpha(1);
+}
 
 // Screen shake on hits.
 var kx = 0, ky = 0;
@@ -32,56 +50,14 @@ if (cb.shake > 0) {
     ky = random_range(-cb.shake, cb.shake);
 }
 
-<<<<<<< Updated upstream
-// ---------------------------------------------------------------- the road
-// Scrolling tarmac under both rigs so the fight reads as happening at speed.
-// Printed as a road is on the atlas: a band of tarmac laid on the paper with
-// a dark casing either side and cream dashes running down it.
-var road_y0 = 108, road_y1 = 556;
-// Kept pale: on a map the carriageway is a fill a shade off the paper, not a
-// dark slab. Anything heavier and the rigs stop reading as ink on a page.
-var tar_hi = merge_colour(p.bg, p.shade, 0.15);
-var tar_lo = merge_colour(p.bg, p.shade, 0.24);
-draw_rectangle_colour(0, road_y0, W, road_y1, tar_hi, tar_hi, tar_lo, tar_lo, false);
-
-// Hard shoulder hatching along both kerbs.
-draw_set_alpha(0.20);
-for (var hx = -24; hx < W + 24; hx += 16) {
-    draw_line_width_colour(hx, road_y0 + 13, hx + 10, road_y0 + 1, 2, p.atlas_ink, p.atlas_ink);
-    draw_line_width_colour(hx, road_y1 - 1,  hx + 10, road_y1 - 13, 2, p.atlas_ink, p.atlas_ink);
-}
-draw_set_alpha(1);
-
-var scroll = (cb.paused || cb.over != "") ? 0 : cb.time;
-draw_set_alpha(0.55);
-for (var i = 0; i < 7; i++) {
-    var ly = road_y0 + 34 + i * 68;
-    var off = frac(scroll * (0.35 + i * 0.05)) * 190;
-    for (var dx = -190; dx < W + 190; dx += 190) {
-        draw_line_width_colour(dx + off, ly, dx + off + 84, ly, 3, p.atlas_cream, p.atlas_cream);
-    }
-}
-draw_set_alpha(1);
-
-// Kerb lines: heavy ink casing, the way a road is drawn on the map.
-draw_line_width_colour(0, road_y0, W, road_y0, 3, p.atlas_ink, p.atlas_ink);
-draw_line_width_colour(0, road_y1, W, road_y1, 3, p.atlas_ink, p.atlas_ink);
-draw_set_alpha(0.5);
-draw_line_width_colour(0, road_y0 + 3, W, road_y0 + 3, 1, p.atlas_cream, p.atlas_cream);
-draw_line_width_colour(0, road_y1 - 3, W, road_y1 - 3, 1, p.atlas_cream, p.atlas_cream);
-draw_set_alpha(1);
-=======
 // The tarmac band, its violet edge rules and the scrolling lane dashes used to
 // live here. The scrolling desert above does that job now.
->>>>>>> Stashed changes
 
 // ---------------------------------------------------------------- cars
 // Player.
 var lp = cb.layout_p;
 draw_car(cb.player, lp.px + kx, lp.py + ky, lp.cs, {
     flip: false,
-    sprite: Spr_Car_Postie,
-    shadow: Spr_Car_Postie_Shadow,
     show_charge: true,
     hover_fac: (hover_car == -1) ? hover_fac : -1,
     selected_fac: cb.sel_weapon,
@@ -95,7 +71,7 @@ for (var e = 0; e < array_length(cb.enemies); e++) {
     if (ec.hull <= 0) {
         // Wreck: dimmed, no charge bars, struck through.
         draw_set_alpha(0.32);
-        draw_car(ec, le.px, le.py, le.cs, { flip: true, show_charge: false, outline: p.text_mute });
+        draw_car(ec, le.px, le.py, le.cs, { flip: false, show_charge: false, outline: p.text_mute });
         draw_set_alpha(1);
         draw_label(le.px + ec.gw * le.cs * 0.5, le.py + ec.gh * le.cs * 0.5,
                    "WRECKED", p.danger, fa_center, fa_middle, fnt_term_big);
@@ -114,13 +90,61 @@ for (var e = 0; e < array_length(cb.enemies); e++) {
         }
     }
 
+    // Nose-right, the same way the player is pointed. Everyone out here is
+    // driving down the same road in the same direction — turning the enemies
+    // around to face you made every fight read as a head-on joust instead of
+    // a running battle at speed.
     draw_car(ec, le.px + kx * 0.5, le.py + ky * 0.5, le.cs, {
-        flip: true,
+        flip: false,
         show_charge: car_has_sensors(cb.player),   // sensors reveal their timers
         hover_fac: (hover_car == e) ? hover_fac : -1,
         target_fac: tgt,
         outline: faction_colour(ec.faction),
     });
+}
+
+// ---------------------------------------------------------------- drones
+// A dispatched drone is drawn hovering over the facility it's working on, with
+// a beam down into the plating. Before this the only sign a drone was doing
+// anything was a number in the side panel, so dispatching one felt like it had
+// been swallowed.
+for (var i = 0; i < array_length(cb.drones); i++) {
+    var dr = cb.drones[i];
+    if (dr.fac < 0 || dr.fac >= array_length(cb.player.facs)) continue;
+
+    var df = cb.player.facs[dr.fac];
+    var dp = combat_fac_pos(-1, dr.fac);
+    var dcx = dp[0] + kx, dcy = dp[1] + ky;
+
+    // Dousing a fire reads orange, patching plate reads green — the same
+    // colours the effect and the repair use everywhere else.
+    var busy   = (df.st.fire > 0);
+    var dcol   = busy ? p.st_fire : p.ok;
+    var phase  = current_time * 0.004 + i * 2.1;
+
+    // Station off the corner of the cell so the glyph underneath stays legible,
+    // bobbing on station rather than sitting still.
+    var hov_x = dcx + 17 + dsin(phase * 40) * 3;
+    var hov_y = dcy - 19 + dcos(phase * 55) * 3;
+
+    // Working beam, plus a spatter of sparks where it lands.
+    draw_set_alpha(0.55 + 0.25 * dsin(phase * 220));
+    draw_line_width_colour(hov_x, hov_y + 6, dcx, dcy, 3, dcol, dcol);
+    draw_set_alpha(1);
+    for (var k = 0; k < 3; k++) {
+        var sa = phase * 190 + k * 120;
+        draw_circle_colour(dcx + dcos(sa) * 4, dcy + dsin(sa) * 4, 1.5, dcol, dcol, false);
+    }
+
+    // The drone: a lozenge body under a blurred rotor disc.
+    draw_circle_colour(hov_x, hov_y, 8.5, merge_colour(dcol, p.shade, 0.25),
+                                          merge_colour(dcol, p.shade, 0.45), false);
+    draw_circle_colour(hov_x, hov_y, 8.5, p.atlas_ink, p.atlas_ink, true);
+    draw_set_alpha(0.45);
+    var rr2 = 12 + dsin(phase * 300) * 1.6;
+    draw_circle_colour(hov_x, hov_y, rr2, p.lift, p.lift, true);
+    draw_set_alpha(1);
+    draw_circle_colour(hov_x, hov_y, 2.6, p.lift, p.lift, false);
 }
 
 // ---------------------------------------------------------------- headers
@@ -138,11 +162,18 @@ for (var i = 0; i < array_length(heads); i++) {
     // Narrow enough that two single-cell drones side by side don't collide.
     var hw = max(112, hc.gw * hl.cs);
     var hx = hl.px;
-    // A repossession clock needs an extra row, so lift the block to make room.
-    var hy = hl.py - hl.cs * 0.34 - 46 - ((hc.repo_max > 0) ? 14 : 0);
+    // A repossession clock needs an extra row, so lift the block to make room —
+    // and clear the bodywork, whose roofline reaches above the top row of cells
+    // on anything with painted art.
+    var lift_by = max(hl.cs * 0.34 + 46, car_art_rise(hc, hl.cs) + 34);
+    var hy = hl.py - lift_by - ((hc.repo_max > 0) ? 14 : 0);
     var hcol = mine ? p.cyan : faction_colour(hc.faction);
 
+    // The name is the anchor for this car's whole block, so it claims its
+    // space before any of the status text that sits around it.
+    var nsz = label_measure(hc.name, fnt_small);
     draw_label(hx, hy, hc.name, hcol, fa_left, fa_top, fnt_small);
+    label_reserve(hx - 2, hy - 2, hx + nsz[0] + 2, hy + nsz[1] + 2);
 
     var frac_hull = hc.hull / max(1, hc.hull_max);
     var bcol = (frac_hull > 0.5) ? p.ok : ((frac_hull > 0.25) ? p.warn : p.danger);
@@ -161,9 +192,22 @@ for (var i = 0; i < array_length(heads); i++) {
         draw_bar(rx + 38, ry, hw - 38, 7, hc.repo / hc.repo_max, p.danger);
     }
 
-    // Harpoon warning.
+    // Harpoon warning. It wants to sit on the name's line, out to the right —
+    // but a long name on a narrow car leaves no room there, and the two used to
+    // print straight through each other. If the line is full it drops below the
+    // block instead.
     if (hc.harpoon > 0) {
-        draw_label(hx + hw, hy, "HARPOONED " + ui_secs(hc.harpoon), p.st_fire, fa_right, fa_top, fnt_small);
+        var htxt = "HARPOONED " + ui_secs(hc.harpoon);
+        var hsz2 = label_measure(htxt, fnt_small);
+        var inline_x1 = hx + hw - hsz2[0];
+        if (inline_x1 > hx + nsz[0] + 10) {
+            draw_label(hx + hw, hy, htxt, p.st_fire, fa_right, fa_top, fnt_small);
+            label_reserve(inline_x1 - 2, hy - 2, hx + hw + 2, hy + hsz2[1] + 2);
+        } else {
+            var hby = hy + 28 + ((smax > 0) ? 11 : 0) + ((hc.repo_max > 0) ? 11 : 0);
+            draw_label(hx, hby, htxt, p.st_fire, fa_left, fa_top, fnt_small);
+            label_reserve(hx - 2, hby - 2, hx + hsz2[0] + 2, hby + hsz2[1] + 2);
+        }
     }
 }
 
@@ -207,12 +251,24 @@ for (var i = 0; i < array_length(cb.shots); i++) {
 }
 
 // ---------------------------------------------------------------- pops
+// A damage number rises out of the facility it happened to. Left alone it will
+// climb straight through the car's name plate, so it stops just under whatever
+// text is already there rather than being nudged sideways — a floating number
+// that jitters is worse than one that hangs.
 draw_set_font(fnt_small);
 for (var i = 0; i < array_length(cb.pops); i++) {
     var pop = cb.pops[i];
     var a = 1 - (pop.t / 1.1);
+    var psz = label_measure(pop.text, fnt_small);
+    var py = pop.py - pop.t * 34;
+    var guard = 0;
+    while (guard < 6 && label_hits(pop.px - psz[0] * 0.5, py - psz[1] * 0.5,
+                                   pop.px + psz[0] * 0.5, py + psz[1] * 0.5)) {
+        py += 6;      // slide back down out of the plate
+        guard += 1;
+    }
     draw_set_alpha(a);
-    draw_label(pop.px, pop.py - pop.t * 34, pop.text, pop.col, fa_center, fa_middle);
+    draw_label(pop.px, py, pop.text, pop.col, fa_center, fa_middle);
     draw_set_alpha(1);
 }
 
@@ -232,19 +288,26 @@ draw_label(W * 0.5, 42, tagline, p.text_dim, fa_center, fa_top, fnt_small);
 draw_label(18, 14, "SECTOR " + string(global.run.sector) + " — " + sector_name(global.run.sector),
            p.text_dim, fa_left, fa_top, fnt_small);
 
-// Weather stamp, over the road itself — you need to be able to see why your
+// Weather stamp, just under the top bar — you need to be able to see why your
 // shots keep going wide without reading the log.
+//
+// This used to hang off the tarmac band's top edge. That band went when the
+// scrolling desert replaced it, taking road_y0 with it, and the stamp was left
+// reading a variable that no longer existed — a crash, but only ever on the
+// one screen nobody had rendered: a fight inside a hazard.
 if (cb.hz != undefined) {
+    var HZ_TOP = 68;
     var hzc = hazard_colour(cb.hz.id);
     var hzs = cb.hz.name + "  ·  " + hazard_effect_line(cb.hz.id);
     draw_set_font(fnt_small);
     var hzw = string_width(hzs) + 26;
     var hzx = W * 0.5 - hzw * 0.5;
     draw_set_alpha(0.90);
-    draw_roundrect_colour(hzx, road_y0 + 8, hzx + hzw, road_y0 + 30, p.atlas_cream, p.atlas_cream, false);
+    draw_roundrect_colour(hzx, HZ_TOP, hzx + hzw, HZ_TOP + 22, p.atlas_cream, p.atlas_cream, false);
     draw_set_alpha(1);
-    draw_roundrect_colour(hzx, road_y0 + 8, hzx + hzw, road_y0 + 30, hzc, hzc, true);
-    draw_label(W * 0.5, road_y0 + 19, hzs, hzc, fa_center, fa_middle, fnt_small);
+    draw_roundrect_colour(hzx, HZ_TOP, hzx + hzw, HZ_TOP + 22, hzc, hzc, true);
+    draw_label(W * 0.5, HZ_TOP + 11, hzs, hzc, fa_center, fa_middle, fnt_small);
+    label_reserve(hzx - 2, HZ_TOP - 2, hzx + hzw + 2, HZ_TOP + 24);
 }
 draw_label(18, 32, "SCRAP " + string(global.run.scrap), p.amber, fa_left, fa_top, fnt_term);
 

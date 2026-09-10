@@ -1,0 +1,58 @@
+{
+  "seed": 808,
+  "fps": 60,
+  "total_frames": 260,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(808); return true;" },
+    "boot":   { "gml": "run_new(); room_goto(rm_map); return true;" },
+
+    "_geometry": { "gml": "return true;" },
+
+    "rects_never_overlap": {
+      "gml": "labels_begin(); label_reserve(0, 0, 10, 10); if (!label_hits(5, 5, 15, 15)) return false; if (label_hits(11, 11, 20, 20)) return false; if (label_hits(0, 11, 10, 20)) return false; return true;"
+    },
+    "crossing_counts_a_line": {
+      "gml": "labels_begin(); label_avoid_line(0, 50, 100, 50); if (label_crossings(20, 40, 60, 60) != 1) return false; if (label_crossings(20, 0, 60, 20) != 0) return false; return true;"
+    },
+    "place_dodges_a_taken_slot": {
+      "gml": "labels_begin(); label_reserve(90, 100, 210, 130); var s = label_place(100, 20, [[150, 105], [150, 200]]); return (s[1] == 200);"
+    },
+    "place_prefers_fewer_crossings": {
+      "gml": "labels_begin(); label_avoid_line(100, 100, 200, 100); var s = label_place(80, 20, [[150, 92], [150, 300]]); return (s[1] == 300);"
+    },
+    "place_falls_back_rather_than_vanishing": {
+      "gml": "labels_begin(); label_reserve(0, 0, 2000, 2000); var s = label_place(50, 20, [[100, 100], [300, 400]]); return (is_array(s) && array_length(s) == 2);"
+    },
+
+    "_map": { "gml": "return true;" },
+
+    "map_labels_all_clear": {
+      "gml": "var worst = 0; for (var g = 0; g < 25; g++) { global.run.sector = 1 + (g mod 3); map_generate(); var r = global.run; var m = r.map; labels_begin(); label_reserve(36, 122, 360, 146); label_reserve(36, 648, 900, 674); label_reserve(998, 120, 1252, 168); var ICON = 46; for (var i = 0; i < array_length(m.nodes); i++) { var bn = m.nodes[i]; var br = (i == r.node) ? ICON * 0.98 : ICON * 0.52; label_reserve(bn.px - br, bn.py - br, bn.px + br, bn.py + br); } var bad = 0; for (var i = 0; i < array_length(m.nodes); i++) { var n = m.nodes[i]; var ttl = map_node_title(n); var tsz = label_measure(ttl, fnt_small); var x1 = 0; var y1 = 0; var pre = array_length(global.LBL); var slot = label_place(tsz[0], tsz[1], [[n.px, n.py + ICON * 0.66], [n.px, n.py - ICON * 0.60 - tsz[1]], [n.px, n.py + ICON * 0.66 + tsz[1] + 3], [n.px + ICON * 0.55 + tsz[0] * 0.5, n.py - tsz[1] * 0.5], [n.px - ICON * 0.55 - tsz[0] * 0.5, n.py - tsz[1] * 0.5]]); var rr = global.LBL[pre]; var hitcount = 0; for (var q = 0; q < pre; q++) { var o = global.LBL[q]; if (rr[0] < o[2] && rr[2] > o[0] && rr[1] < o[3] && rr[3] > o[1]) hitcount += 1; } if (hitcount > 0) bad += 1; } worst = max(worst, bad); } return worst;"
+    },
+
+    "hazard_names_clear_of_stops": {
+      "gml": "var bad = 0; for (var g = 0; g < 25; g++) { global.run.sector = 1 + (g mod 3); map_generate(); var r = global.run; var m = r.map; labels_begin(); var ICON = 46; for (var i = 0; i < array_length(m.nodes); i++) { var bn = m.nodes[i]; var br = ICON * 0.52; label_reserve(bn.px - br, bn.py - br, bn.px + br, bn.py + br); } for (var hi = 0; hi < array_length(m.hazards); hi++) { var reg = m.hazards[hi]; var hnm = hazard(reg.id).name; var hsz = label_measure(hnm, fnt_small); var pre = array_length(global.LBL); label_place(hsz[0], hsz[1], hazard_label_slots(reg, hsz[0], hsz[1])); var rc = global.LBL[pre]; for (var q = 0; q < pre; q++) { var o = global.LBL[q]; if (rc[0] < o[2] && rc[2] > o[0] && rc[1] < o[3] && rc[3] > o[1]) bad += 1; } } } return bad;"
+    },
+
+    "every_hazard_has_a_readable_name": {
+      "gml": "var db = hazard_db(); var ids = variable_struct_get_names(db); for (var i = 0; i < array_length(ids); i++) { var h = variable_struct_get(db, ids[i]); if (h.name == \"\" || string_length(h.name) < 4) return false; if (hazard_effect_line(h.id) == \"\") return false; if (h.blurb == \"\") return false; } return true;"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["boot"] },
+
+    { "frame": 6,  "assert": { "id": "rects_never_overlap",              "name": "the register knows what overlaps",        "expect": true } },
+    { "frame": 7,  "assert": { "id": "crossing_counts_a_line",           "name": "and knows when a road runs through",      "expect": true } },
+    { "frame": 8,  "assert": { "id": "place_dodges_a_taken_slot",        "name": "a label moves off an occupied slot",      "expect": true } },
+    { "frame": 9,  "assert": { "id": "place_prefers_fewer_crossings",    "name": "and prefers not to sit across a road",    "expect": true } },
+    { "frame": 10, "assert": { "id": "place_falls_back_rather_than_vanishing", "name": "with nowhere clear it still draws", "expect": true } },
+
+    { "frame": 14, "assert": { "id": "map_labels_all_clear",        "name": "worst sector: stop names landing on ink", "expect": 0 } },
+    { "frame": 16, "assert": { "id": "hazard_names_clear_of_stops", "name": "hazard names landing on a stop badge",    "expect": 0 } },
+    { "frame": 18, "assert": { "id": "every_hazard_has_a_readable_name", "name": "every hazard has a name, effect and blurb", "expect": true } }
+  ]
+}

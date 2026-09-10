@@ -11,13 +11,32 @@ gx = 48;
 gy = 180;
 cs = 58;
 
-/// Recompute the cell size for the current chassis width.
+/// Recompute the cell size so the whole rig clears the inventory panel.
+///
+/// With painted bodywork the grid is pinned to the roof panel, and a postie is
+/// nearly three times longer than its cargo roof — so the space the rig needs
+/// is the grid divided by the roof's share of the sprite, not the grid plus a
+/// bonnet. Sizing off the old procedural footprint drove the nose straight
+/// under the trailer list.
 function garage_fit() {
-    var gw = global.run.car.gw;
-    // Overhead footprint: gw*cs of grid, 0.6*cs of padding, a 0.9*cs bonnet
-    // and ~0.3*cs of rear bumper and exhaust.
-    cs = floor(min(58, 440 / (gw + 1.85)));
-    cs = max(28, cs);
+    var c = global.run.car;
+    var has_art = variable_struct_exists(c, "art") && c.art != -1;
+
+    if (!has_art) {
+        // Procedural cutaway: grid, padding, bonnet and rear furniture.
+        cs = floor(min(58, 440 / (c.gw + 1.85)));
+        cs = max(28, cs);
+        return;
+    }
+
+    var roof = variable_struct_exists(c, "art_roof") ? c.art_roof : [0, 0, 1, 1];
+    var rw = max(0.05, roof[2] - roof[0]);
+    var rh = max(0.05, roof[3] - roof[1]);
+
+    // Room available to the left of the trailer list, and above the readouts.
+    var avail_w = 448, avail_h = 296;
+    cs = floor(min(58, avail_w * rw / c.gw, avail_h * rh / c.gh));
+    cs = max(22, cs);
 }
 
 garage_fit();

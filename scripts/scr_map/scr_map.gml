@@ -127,10 +127,27 @@ function map_generate() {
         if (nodes[seed_i].hazard != "") continue;
 
         var hid = hazard_pick_any();
-        var reg = hazard_region_new(hid,
-                                    nodes[seed_i].px + random_range(-40, 40),
-                                    nodes[seed_i].py + random_range(-30, 30),
-                                    random_range(124, 176));
+
+        // Drift the centre off the seed node so the shape doesn't look pinned,
+        // and most of the time shove it toward the nearest edge of the sheet as
+        // well. Weather doesn't stop at the border of a printed page, and a
+        // region that runs off it reads as country continuing past the map
+        // rather than a blob that happens to fit. Anything pushed so far out
+        // that it stops covering a stop is thrown away by the checks below.
+        var hcx = nodes[seed_i].px + random_range(-40, 40);
+        var hcy = nodes[seed_i].py + random_range(-30, 30);
+        var hbase = random_range(124, 176);
+
+        if (irandom(99) < 62) {
+            var mid_y = (MAP_Y0 + MAP_Y1) * 0.5;
+            var shove = hbase * random_range(0.40, 0.85);
+            if (hcy < mid_y) hcy -= shove; else hcy += shove;
+            // Near the ends of the run, let it bleed sideways instead.
+            if (hcx < MAP_X0 + 170)      hcx -= shove * 0.7;
+            else if (hcx > MAP_X1 - 170) hcx += shove * 0.7;
+        }
+
+        var reg = hazard_region_new(hid, hcx, hcy, hbase);
 
         // Who would this cover, and is that allowed?
         var inside = [];

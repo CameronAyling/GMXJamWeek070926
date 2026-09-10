@@ -24,6 +24,18 @@ function car_new(_name, _w, _h, _hull) {
         harpoon: 0,          // seconds still pinned by a harpoon
         escape: 0,           // 0..1 break-away meter
 
+        // Bodywork. A car carries its own art so every screen that draws it —
+        // the fight, the garage, the manifest at the end — shows the same
+        // vehicle without each one having to remember which sprite to pass.
+        // -1 falls back to the procedural cutaway.
+        art: -1,
+        art_shadow: -1,
+        // Which part of the art the grid sits on, as fractions of the sprite.
+        // The postie's cargo roof is the black slab behind the cab: that is the
+        // deck, so that is where the facilities go, and the rest of the vehicle
+        // (cab, bonnet, wheels) hangs off it.
+        art_roof: [0.035, 0.225, 0.385, 0.765],
+
         // enemy flavour
         faction: "",
         repo: 0,             // corporate repossession timer
@@ -475,6 +487,8 @@ function car_attach_trailer(_car) {
 /// and stay able to react.
 function car_new_player() {
     var c = car_new("THE LAST CALL", 3, 3, 36);
+    c.art        = Spr_Car_Postie;
+    c.art_shadow = Spr_Car_Postie_Shadow;
     car_place(c, "reac_1", 0, 0);      // gen 5
     car_place(c, "las_1",  1, 0);      // 1 power
     car_place(c, "drv_1",  2, 0);      // 1 power

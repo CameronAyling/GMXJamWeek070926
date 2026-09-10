@@ -25,8 +25,10 @@ draw_label(W - 22, 40, "FUEL " + string(r.fuel) + "    SECTOR " + string(r.secto
            p.text_dim, fa_right, fa_top, fnt_small);
 
 // ---------------------------------------------------------------- the rig
-draw_label(gx, 104, "CHASSIS", p.text_dim, fa_left, fa_top, fnt_small);
-draw_label(gx, 122, held == ""
+// Above the bodywork: with the art hung off the deck the van's roofline now
+// reaches up to y~115, and these used to end up printed across the bonnet.
+draw_label(gx, 70, "CHASSIS", p.text_dim, fa_left, fa_top, fnt_small);
+draw_label(gx, 86, held == ""
     ? "LMB lift  ·  RMB strip to trailer"
     : "LMB drop  ·  R rotate  ·  ESC stow",
     held == "" ? p.text_mute : p.ok, fa_left, fa_top, fnt_small);
