@@ -1,0 +1,62 @@
+{
+  "seed": 131,
+  "fps": 60,
+  "total_frames": 300,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(131); return true;" },
+    "boot":   { "gml": "run_new(); room_goto(rm_map); return true;" },
+
+    "sector2": { "gml": "var r = global.run; r.sector = 2; map_generate(); r.scrap = 187; r.fuel = 4; r.car.hull = 21; return r.sector;" },
+    "reveal":  { "gml": "var r = global.run; for (var i = 0; i < array_length(r.map.nodes); i++) { r.map.nodes[i].visited = true; } r.map.nodes[0].resolved = true; if (array_length(r.map.nodes) > 3) r.map.nodes[3].resolved = true; return true;" },
+    "advance": { "gml": "global.run.deadline = 1.4; return true;" },
+
+    "in_map":  { "gml": "return (room == rm_map);" },
+    "icons_ok": {
+      "gml": "var r = global.run; for (var i = 0; i < array_length(r.map.nodes); i++) { var n = r.map.nodes[i]; var s = map_node_sprite(n, true); if (s != -1 && !sprite_exists(s)) return false; } return true;"
+    },
+    "every_fight_has_art": {
+      "gml": "var kinds = [\"bandits\", \"robots\", \"corps\", \"insects\"]; for (var k = 0; k < 4; k++) { var n = { kind: \"fight\", faction: kinds[k] }; var s = map_node_sprite(n, true); if (s == -1 || !sprite_exists(s)) return false; } return true;"
+    },
+
+    "icons_centred": {
+      "gml": "var sp = [Spr_Icon_Map_Ants, Spr_Icon_Map_BOTS, Spr_Icon_Map_Bandits, Spr_Icon_Map_CORPORATE_, Spr_Icon_Map_Option_Here, Spr_Icon_Map_Shop, Spr_Icon_Map_Unknown, Spr_Icon_Map_You_are_Here]; var worst = 0; for (var i = 0; i < array_length(sp); i++) { var s = sp[i]; worst = max(worst, abs(sprite_get_xoffset(s) - sprite_get_width(s) * 0.5)); worst = max(worst, abs(sprite_get_yoffset(s) - sprite_get_height(s) * 0.5)); } return worst;"
+    },
+    "base_page_top_left": {
+      "gml": "return (sprite_get_xoffset(Spr_Map_01_Base) == 0 && sprite_get_yoffset(Spr_Map_01_Base) == 0);"
+    },
+
+    "no_fuel_depots": {
+      "gml": "for (var g = 0; g < 60; g++) { map_generate(); var nd = global.run.map.nodes; for (var i = 0; i < array_length(nd); i++) if (nd[i].kind == \"fuel\") return false; } return true;"
+    },
+    "shop_share": {
+      "gml": "var shops = 0; var tot = 0; for (var g = 0; g < 60; g++) { map_generate(); var nd = global.run.map.nodes; for (var i = 0; i < array_length(nd); i++) { if (nd[i].kind == \"start\" || nd[i].kind == \"exit\") continue; tot += 1; if (nd[i].kind == \"shop\") shops += 1; } } return round(shops / max(1, tot) * 100);"
+    },
+    "fight_share": {
+      "gml": "var f = 0; var tot = 0; for (var g = 0; g < 60; g++) { map_generate(); var nd = global.run.map.nodes; for (var i = 0; i < array_length(nd); i++) { if (nd[i].kind == \"start\" || nd[i].kind == \"exit\") continue; tot += 1; if (nd[i].kind == \"fight\") f += 1; } } return round(f / max(1, tot) * 100);"
+    },
+    "shop_guaranteed": {
+      "gml": "for (var g = 0; g < 60; g++) { map_generate(); var nd = global.run.map.nodes; var found = false; for (var i = 0; i < array_length(nd); i++) if (nd[i].kind == \"shop\") found = true; if (!found) return false; } return true;"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot"] },
+    { "frame": 20, "assert": { "id": "in_map",   "name": "on the atlas", "expect": true } },
+    { "frame": 22, "assert": { "id": "icons_ok", "name": "every node resolves to real art", "expect": true } },
+    { "frame": 24, "assert": { "id": "every_fight_has_art", "name": "all four factions have a map badge", "expect": true } },
+
+    { "frame": 25, "assert": { "id": "icons_centred",      "name": "node badges pivot on centre (px off; odd widths cost 0.5)", "expect": 0, "tolerance": 0.5 } },
+    { "frame": 25, "assert": { "id": "base_page_top_left", "name": "the printed page still anchors at 0,0", "expect": true } },
+
+    { "frame": 26, "assert": { "id": "no_fuel_depots",   "name": "no fuel depots in 60 sectors",        "expect": true } },
+    { "frame": 28, "assert": { "id": "shop_share",       "name": "truck stops are ~20% of stops (%)",   "expect": 21, "tolerance": 8 } },
+    { "frame": 30, "assert": { "id": "fight_share",      "name": "roadblocks are ~52% of stops (%)",    "expect": 52, "tolerance": 8 } },
+    { "frame": 32, "assert": { "id": "shop_guaranteed",  "name": "every sector still has a truck stop", "expect": true } },
+
+    { "frame": 40, "code":   ["sector2", "reveal", "advance"] },
+    { "frame": 80, "screenshot": "map_sector2.png" }
+  ]
+}

@@ -69,12 +69,19 @@ function combat_init() {
 
         shake: 0,
         reward: 0,
+
+        // Whatever weather the node you're parked in is having. Resolved once
+        // here rather than per-frame, so a headless balance sim with no map
+        // simply fights in clear country.
+        hz: hazard(hazard_here()),
+        hz_t: 0,            // seconds until the next drip
     };
 
     combat_layout();
     combat_log(string_upper(faction_name(ctx.faction)) + " on the road ahead.");
     if (ctx.boss)  combat_log("It isn't slowing down. It doesn't have to.");
-    if (ctx.elite) combat_log("Repo escort — heavier than the usual traffic.");
+    if (ctx.elite) combat_log("Recovery crew. There Next Tuesday came to take the load off you.");
+    if (global.cb.hz != undefined) combat_log(global.cb.hz.name + " — " + global.cb.hz.blurb);
 
     // Aim everything at something sensible so the fight starts immediately.
     combat_autotarget_all();
@@ -354,7 +361,10 @@ function combat_resolve(_shot) {
     //    everything, and a packed grid is riskier than a sparse one.
     var stray = false;
     var dst_fac = _shot.dst_fac;
-    if (random(1) < car_evade(tgt)) {
+    // A dust storm blinds both sides, so it rides on top of the target's own
+    // evasion rather than replacing it.
+    var haz_evade = (global.cb.hz == undefined) ? 0 : global.cb.hz.evade_bonus;
+    if (random(1) < car_evade(tgt) + haz_evade) {
         var s = combat_stray(_shot.dst, dst_fac);
         if (s == undefined || random(1) >= STRAY_CHANCE) {
             combat_pop(pos[0], pos[1], "MISS", global.PAL.text_dim);
@@ -468,7 +478,30 @@ function combat_update(_dt) {
     // The drive spools on its own and then holds at full. Leaving is the
     // decision: you choose the moment, weighed against the salvage you forfeit.
     if (cb.player.harpoon <= 0) {
-        cb.player.escape = min(1, cb.player.escape + car_escape_rate(cb.player) * _dt);
+        var esc_mult = (cb.hz == undefined) ? 1 : cb.hz.escape_mult;
+        cb.player.escape = min(1, cb.player.escape + car_escape_rate(cb.player) * esc_mult * _dt);
+    }
+
+    // --- weather ---
+    // A dripping hazard lands its status on one random live facility per car,
+    // both sides, so bad country is a leveller rather than a tax on the player.
+    if (cb.hz != undefined && cb.hz.drip != "" && cb.over == "") {
+        cb.hz_t -= _dt;
+        if (cb.hz_t <= 0) {
+            cb.hz_t += cb.hz.drip_every;
+            for (var ci = 0; ci < array_length(cars); ci++) {
+                var hcar = combat_car(cars[ci]);
+                if (hcar == undefined || (cars[ci] >= 0 && hcar.hull <= 0)) continue;
+
+                var live = [];
+                for (var fi = 0; fi < array_length(hcar.facs); fi++) {
+                    if (fac_alive(hcar.facs[fi])) array_push(live, fi);
+                }
+                if (array_length(live) == 0) continue;
+                status_apply(hcar, live[irandom(array_length(live) - 1)],
+                             cb.hz.drip, cb.hz.drip_dur);
+            }
+        }
     }
 
     // --- enemy decisions ---
@@ -517,16 +550,19 @@ function combat_update(_dt) {
     }
 
     // --- repair drones ---
+    // A static field doesn't stop them, it just slows everything they do — so
+    // it scales the work rate, not the repair threshold.
+    var drone_rate = (cb.hz == undefined) ? 1 : cb.hz.repair_mult;
     for (var i = 0; i < array_length(cb.drones); i++) {
         var dr = cb.drones[i];
         if (dr.fac < 0 || dr.fac >= array_length(cb.player.facs)) { dr.fac = -1; continue; }
         var f = cb.player.facs[dr.fac];
 
         if (f.st.fire > 0) {
-            f.st.fire = max(0, f.st.fire - DRONE_DOUSE_RATE * _dt);
+            f.st.fire = max(0, f.st.fire - DRONE_DOUSE_RATE * drone_rate * _dt);
             if (f.st.fire <= 0) combat_log("Fire out on " + fac(f.def).name + ".");
         } else if (f.hp < f.hp_max) {
-            f.repair_t += _dt;
+            f.repair_t += _dt * drone_rate;
             while (f.repair_t >= DRONE_REPAIR_TIME && f.hp < f.hp_max) {
                 f.repair_t -= DRONE_REPAIR_TIME;
                 f.hp += 1;

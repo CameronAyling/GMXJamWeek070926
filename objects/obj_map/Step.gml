@@ -22,6 +22,15 @@ if (ev == undefined && variable_struct_exists(r, "pending_fight")) {
 if (ev != undefined) exit;   // the event panel owns input while it's open
 if (transitioning()) exit;   // already leaving — don't take another hop
 
+// ---------------------------------------------------------------- the rig
+// Re-pack the chassis from the road, any time. The atlas is the one screen
+// where nothing is shooting at you, so making the player drive to a truck stop
+// before they can move a facility only ever added a trip, never a decision.
+if (keyboard_check_pressed(ord("G"))) {
+    garage_open(false, true);
+    exit;
+}
+
 // ---------------------------------------------------------------- hover
 hover_node = -1;
 for (var i = 0; i < array_length(r.map.nodes); i++) {
@@ -35,7 +44,8 @@ if (hover_node != -1 && hover_node != r.node && map_can_travel(hover_node)) {
         global.ui_click = false;
         var caught = map_travel(hover_node);
         if (caught == "caught") {
-            // Overrun: a heavier escort than anything the sector spawns normally.
+            // Late: the company sends a crew to repossess the freight, and they are
+            // heavier than anything the sector spawns normally.
             combat_begin("corps", true, false);
             exit;
         }

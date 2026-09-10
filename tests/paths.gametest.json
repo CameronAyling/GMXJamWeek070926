@@ -17,7 +17,7 @@
     },
 
     "walk_map": {
-      "gml": "run_new(); var hops = 0; var guard = 0; while (guard < 40) { guard += 1; var links = map_reachable(); if (array_length(links) == 0) break; var nxt = links[irandom(array_length(links) - 1)]; if (!map_can_travel(nxt)) break; map_travel(nxt); hops += 1; var nd = map_node(global.run.node); if (nd.kind == \"fuel\") { run_add_fuel(2); } } return hops;"
+      "gml": "run_new(); var hops = 0; var guard = 0; while (guard < 40) { guard += 1; var links = map_reachable(); if (array_length(links) == 0) break; var nxt = links[irandom(array_length(links) - 1)]; if (!map_can_travel(nxt)) break; map_travel(nxt); hops += 1; } return hops;"
     },
 
     "garage_churn": {

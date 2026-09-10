@@ -14,25 +14,40 @@ if (cb.shake > 0) {
 
 // ---------------------------------------------------------------- the road
 // Scrolling tarmac under both rigs so the fight reads as happening at speed.
+// Printed as a road is on the atlas: a band of tarmac laid on the paper with
+// a dark casing either side and cream dashes running down it.
 var road_y0 = 108, road_y1 = 556;
-draw_set_alpha(0.55);
-draw_rectangle_colour(0, road_y0, W, road_y1,
-    make_colour_rgb(14, 12, 24), make_colour_rgb(14, 12, 24),
-    make_colour_rgb(8, 7, 15), make_colour_rgb(8, 7, 15), false);
+// Kept pale: on a map the carriageway is a fill a shade off the paper, not a
+// dark slab. Anything heavier and the rigs stop reading as ink on a page.
+var tar_hi = merge_colour(p.bg, p.shade, 0.15);
+var tar_lo = merge_colour(p.bg, p.shade, 0.24);
+draw_rectangle_colour(0, road_y0, W, road_y1, tar_hi, tar_hi, tar_lo, tar_lo, false);
+
+// Hard shoulder hatching along both kerbs.
+draw_set_alpha(0.20);
+for (var hx = -24; hx < W + 24; hx += 16) {
+    draw_line_width_colour(hx, road_y0 + 13, hx + 10, road_y0 + 1, 2, p.atlas_ink, p.atlas_ink);
+    draw_line_width_colour(hx, road_y1 - 1,  hx + 10, road_y1 - 13, 2, p.atlas_ink, p.atlas_ink);
+}
 draw_set_alpha(1);
 
 var scroll = (cb.paused || cb.over != "") ? 0 : cb.time;
-draw_set_alpha(0.16);
+draw_set_alpha(0.55);
 for (var i = 0; i < 7; i++) {
     var ly = road_y0 + 34 + i * 68;
     var off = frac(scroll * (0.35 + i * 0.05)) * 190;
     for (var dx = -190; dx < W + 190; dx += 190) {
-        draw_line_width_colour(dx + off, ly, dx + off + 84, ly, 3, p.text_dim, p.text_dim);
+        draw_line_width_colour(dx + off, ly, dx + off + 84, ly, 3, p.atlas_cream, p.atlas_cream);
     }
 }
-draw_set_alpha(0.35);
-draw_line_width_colour(0, road_y0, W, road_y0, 2, p.violet, p.violet);
-draw_line_width_colour(0, road_y1, W, road_y1, 2, p.violet, p.violet);
+draw_set_alpha(1);
+
+// Kerb lines: heavy ink casing, the way a road is drawn on the map.
+draw_line_width_colour(0, road_y0, W, road_y0, 3, p.atlas_ink, p.atlas_ink);
+draw_line_width_colour(0, road_y1, W, road_y1, 3, p.atlas_ink, p.atlas_ink);
+draw_set_alpha(0.5);
+draw_line_width_colour(0, road_y0 + 3, W, road_y0 + 3, 1, p.atlas_cream, p.atlas_cream);
+draw_line_width_colour(0, road_y1 - 3, W, road_y1 - 3, 1, p.atlas_cream, p.atlas_cream);
 draw_set_alpha(1);
 
 // ---------------------------------------------------------------- cars
@@ -182,13 +197,28 @@ draw_line_width_colour(0, 60, W, 60, 2, p.edge, p.edge);
 
 var fc = faction_colour(cb.ctx.faction);
 draw_label(W * 0.5, 16, string_upper(faction_name(cb.ctx.faction)), fc, fa_center, fa_top, fnt_term_big);
-var tagline = cb.ctx.boss ? "FINAL CREDITOR" : (cb.ctx.elite ? "REPO ESCORT" : faction_blurb(cb.ctx.faction));
+var tagline = cb.ctx.boss ? "FINAL CREDITOR" : (cb.ctx.elite ? "RECOVERY CREW" : faction_blurb(cb.ctx.faction));
 draw_set_font(fnt_small);
 if (string_width(tagline) > 620) tagline = cb.ctx.faction == "" ? "" : "ENGAGED";
 draw_label(W * 0.5, 42, tagline, p.text_dim, fa_center, fa_top, fnt_small);
 
 draw_label(18, 14, "SECTOR " + string(global.run.sector) + " — " + sector_name(global.run.sector),
            p.text_dim, fa_left, fa_top, fnt_small);
+
+// Weather stamp, over the road itself — you need to be able to see why your
+// shots keep going wide without reading the log.
+if (cb.hz != undefined) {
+    var hzc = hazard_colour(cb.hz.id);
+    var hzs = cb.hz.name + "  ·  " + hazard_effect_line(cb.hz.id);
+    draw_set_font(fnt_small);
+    var hzw = string_width(hzs) + 26;
+    var hzx = W * 0.5 - hzw * 0.5;
+    draw_set_alpha(0.90);
+    draw_roundrect_colour(hzx, road_y0 + 8, hzx + hzw, road_y0 + 30, p.atlas_cream, p.atlas_cream, false);
+    draw_set_alpha(1);
+    draw_roundrect_colour(hzx, road_y0 + 8, hzx + hzw, road_y0 + 30, hzc, hzc, true);
+    draw_label(W * 0.5, road_y0 + 19, hzs, hzc, fa_center, fa_middle, fnt_small);
+}
 draw_label(18, 32, "SCRAP " + string(global.run.scrap), p.amber, fa_left, fa_top, fnt_term);
 
 draw_label(W - 18, 14, cb.paused ? "PAUSED" : "RUNNING", cb.paused ? p.amber : p.ok, fa_right, fa_top, fnt_term);

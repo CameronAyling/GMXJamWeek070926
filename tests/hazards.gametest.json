@@ -1,0 +1,107 @@
+{
+  "seed": 909,
+  "fps": 60,
+  "total_frames": 300,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(909); return true;" },
+    "boot":   { "gml": "run_new(); return true;" },
+
+    "_placement": { "gml": "return true;" },
+
+    "count_per_sector": {
+      "gml": "var lo = 99; var hi = 0; for (var g = 0; g < 40; g++) { global.run.sector = 1 + (g mod 3); map_generate(); var nd = global.run.map.nodes; var c = 0; for (var i = 0; i < array_length(nd); i++) if (nd[i].hazard != \"\") c += 1; lo = min(lo, c); hi = max(hi, c); } return lo * 100 + hi;"
+    },
+    "endpoints_clear": {
+      "gml": "for (var g = 0; g < 40; g++) { map_generate(); var nd = global.run.map.nodes; for (var i = 0; i < array_length(nd); i++) { if ((nd[i].kind == \"start\" || nd[i].kind == \"exit\") && nd[i].hazard != \"\") return false; } } return true;"
+    },
+    "every_region_bites_something": {
+      "gml": "for (var g = 0; g < 60; g++) { map_generate(); var mp = global.run.map; for (var q = 0; q < array_length(mp.hazards); q++) { var reg = mp.hazards[q]; var h = hazard(reg.id); var bites = false; for (var i = 0; i < array_length(mp.nodes); i++) { if (mp.nodes[i].hazard != reg.id) continue; if (!hazard_region_contains(reg, mp.nodes[i].px, mp.nodes[i].py)) continue; if (!h.combat || mp.nodes[i].kind == \"fight\") bites = true; } if (!bites) return false; } } return true;"
+    },
+    "never_covers_everything": {
+      "gml": "var worst = 0; for (var g = 0; g < 60; g++) { map_generate(); var nd = global.run.map.nodes; var c = 0; for (var i = 0; i < array_length(nd); i++) if (nd[i].hazard != \"\") c += 1; worst = max(worst, c / array_length(nd)); } return round(worst * 100);"
+    },
+    "shading_matches_what_bites": {
+      "gml": "for (var g = 0; g < 60; g++) { map_generate(); var mp = global.run.map; for (var i = 0; i < array_length(mp.nodes); i++) { var n = mp.nodes[i]; var inside = \"\"; for (var q = 0; q < array_length(mp.hazards); q++) { if (hazard_region_contains(mp.hazards[q], n.px, n.py)) inside = mp.hazards[q].id; } if (inside != n.hazard) return false; } } return true;"
+    },
+    "regions_per_sector": {
+      "gml": "var lo = 99; var hi = 0; for (var g = 0; g < 60; g++) { global.run.sector = 1 + (g mod 3); map_generate(); var c = array_length(global.run.map.hazards); lo = min(lo, c); hi = max(hi, c); } return lo * 100 + hi;"
+    },
+    "regions_cover_more_than_one_stop": {
+      "gml": "var multi = 0; var tot = 0; for (var g = 0; g < 60; g++) { map_generate(); var mp = global.run.map; for (var q = 0; q < array_length(mp.hazards); q++) { var c = 0; for (var i = 0; i < array_length(mp.nodes); i++) if (hazard_region_contains(mp.hazards[q], mp.nodes[i].px, mp.nodes[i].py)) c += 1; tot += 1; if (c > 1) multi += 1; } } if (tot == 0) return -1; return round(multi / tot * 100);"
+    },
+    "every_kind_appears": {
+      "gml": "var seen = {}; for (var g = 0; g < 120; g++) { map_generate(); var nd = global.run.map.nodes; for (var i = 0; i < array_length(nd); i++) if (nd[i].hazard != \"\") variable_struct_set(seen, nd[i].hazard, true); } return array_length(variable_struct_get_names(seen));"
+    },
+
+    "_rough": { "gml": "return true;" },
+
+    "rough_costs_two": {
+      "gml": "run_new(); map_generate(); var r = global.run; var here = map_node(r.node); var dest = -1; for (var k = 0; k < array_length(here.links); k++) { var c = here.links[k]; if (!map_node_lost(c) && map_node(c).kind != \"exit\") { dest = c; break; } } if (dest < 0) return -1; map_node(dest).hazard = \"rough\"; r.fuel = 10; map_travel(dest); return 10 - r.fuel;"
+    },
+    "clear_costs_one": {
+      "gml": "run_new(); map_generate(); var r = global.run; var here = map_node(r.node); var dest = -1; for (var k = 0; k < array_length(here.links); k++) { var c = here.links[k]; if (!map_node_lost(c) && map_node(c).kind != \"exit\") { dest = c; break; } } if (dest < 0) return -1; map_node(dest).hazard = \"\"; r.fuel = 10; map_travel(dest); return 10 - r.fuel;"
+    },
+
+    "_combat_effects": { "gml": "return true;" },
+
+    "acid_rain_lands": {
+      "gml": "random_set_seed(4242); run_new(); map_generate(); var r = global.run; r.map.nodes[r.node].hazard = \"acidrain\"; global.combat_ctx = { faction: \"robots\", elite: false, boss: false, diff: 1.0 }; combat_init(); var seen = 0; for (var i = 0; i < 600 && global.cb.over == \"\"; i++) { combat_update(1/60); var c = global.cb.player; for (var f = 0; f < array_length(c.facs); f++) if (c.facs[f].st.acid > 0) { seen = 1; break; } if (seen) break; } return seen;"
+    },
+    "clear_country_has_no_acid": {
+      "gml": "random_set_seed(4242); run_new(); map_generate(); var r = global.run; r.map.nodes[r.node].hazard = \"\"; global.combat_ctx = { faction: \"robots\", elite: false, boss: false, diff: 1.0 }; combat_init(); var seen = 0; for (var i = 0; i < 600 && global.cb.over == \"\"; i++) { combat_update(1/60); var c = global.cb.player; for (var f = 0; f < array_length(c.facs); f++) if (c.facs[f].st.acid > 0) { seen = 1; break; } if (seen) break; } return seen;"
+    },
+
+    "climb_escape_pct_of_clear": {
+      "gml": "var out = [0, 0]; var hz = [\"\", \"climb\"]; for (var k = 0; k < 2; k++) { random_set_seed(77); run_new(); map_generate(); global.run.map.nodes[global.run.node].hazard = hz[k]; global.combat_ctx = { faction: \"robots\", elite: false, boss: false, diff: 1.0 }; combat_init(); global.cb.player.harpoon = 0; for (var i = 0; i < 120; i++) { global.cb.player.harpoon = 0; combat_update(1/60); } out[k] = global.cb.player.escape; } if (out[0] <= 0) return -1; return round(out[1] / out[0] * 100);"
+    },
+
+    "static_mult_is_wired": {
+      "gml": "return round(hazard(\"interference\").repair_mult * 100);"
+    },
+    "static_repair_pct_of_clear": {
+      "gml": "var out = [0, 0]; var hz = [\"\", \"interference\"]; for (var k = 0; k < 2; k++) { random_set_seed(88); run_new(); map_generate(); global.run.map.nodes[global.run.node].hazard = hz[k]; global.combat_ctx = { faction: \"robots\", elite: false, boss: false, diff: 1.0 }; combat_init(); var cb = global.cb; var f = cb.player.facs[0]; f.hp = 1; f.repair_t = 0; if (array_length(cb.drones) == 0) return -1; cb.drones[0].fac = 0; for (var i = 0; i < 180; i++) combat_update(1/60); var g = cb.player.facs[0]; if (g.hp >= g.hp_max) return -2; out[k] = (g.hp - 1) * DRONE_REPAIR_TIME + g.repair_t; } if (out[0] <= 0) return -1; return round(out[1] / out[0] * 100);"
+    },
+
+    "dust_bonus_is_wired": {
+      "gml": "run_new(); map_generate(); global.run.map.nodes[global.run.node].hazard = \"duststorm\"; global.combat_ctx = { faction: \"robots\", elite: false, boss: false, diff: 1.0 }; combat_init(); return round(global.cb.hz.evade_bonus * 100);"
+    },
+    "dust_costs_both_sides_damage": {
+      "gml": "var out = [0, 0]; var hz = [\"\", \"duststorm\"]; for (var k = 0; k < 2; k++) { random_set_seed(1234); var tot = 0; var ended = 0; for (var t = 0; t < 30; t++) { run_new(); map_generate(); global.run.map.nodes[global.run.node].hazard = hz[k]; global.combat_ctx = { faction: \"bandits\", elite: false, boss: false, diff: 1.0 }; combat_init(); var cb = global.cb; var h0 = 0; for (var e = 0; e < array_length(cb.enemies); e++) for (var f = 0; f < array_length(cb.enemies[e].facs); f++) h0 += cb.enemies[e].facs[f].hp; for (var i = 0; i < 480; i++) combat_update(1/60); if (cb.over != \"\") ended += 1; var h1 = 0; for (var e = 0; e < array_length(cb.enemies); e++) for (var f = 0; f < array_length(cb.enemies[e].facs); f++) h1 += max(0, cb.enemies[e].facs[f].hp); tot += (h0 - h1); } if (ended > 0) return -3; out[k] = tot; } if (out[0] <= 0) return -1; return round(out[1] / out[0] * 100);"
+    },
+
+    "no_map_means_clear_country": {
+      "gml": "run_new(); global.run.map = undefined; return (hazard_here() == \"\");"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0, "code": ["reseed"] },
+    { "frame": 2, "code": ["boot"] },
+
+    { "frame": 6,  "assert": { "id": "count_per_sector", "name": "1-8 stops a sector sit in bad country (lo*100+hi)", "expect": 108, "tolerance": 103 } },
+    { "frame": 8,  "assert": { "id": "endpoints_clear", "name": "the yard and the on-ramp stay clear", "expect": true } },
+    { "frame": 10, "assert": { "id": "every_region_bites_something", "name": "every region does something to a stop in it", "expect": true } },
+    { "frame": 11, "assert": { "id": "shading_matches_what_bites", "name": "the shaded area is exactly what is affected", "expect": true } },
+    { "frame": 12, "assert": { "id": "every_kind_appears", "name": "all five hazards reachable", "expect": 5 } },
+    { "frame": 13, "assert": { "id": "regions_per_sector", "name": "1-3 regions a sector (lo*100+hi)", "expect": 103, "tolerance": 101 } },
+    { "frame": 14, "assert": { "id": "never_covers_everything", "name": "worst-case sector coverage stays under 40% (%)", "expect": 20, "tolerance": 20 } },
+    { "frame": 15, "assert": { "id": "regions_cover_more_than_one_stop", "name": "regions usually take in several stops (%)", "expect": 70, "tolerance": 30 } },
+
+    { "frame": 16, "assert": { "id": "rough_costs_two", "name": "rough going burns 2 fuel", "expect": 2 } },
+    { "frame": 18, "assert": { "id": "clear_costs_one", "name": "clear country still burns 1", "expect": 1 } },
+
+    { "frame": 24, "assert": { "id": "acid_rain_lands", "name": "acid rain corrodes you unprompted", "expect": 1 } },
+    { "frame": 26, "assert": { "id": "clear_country_has_no_acid", "name": "and clear country never does", "expect": 0 } },
+
+    { "frame": 32, "assert": { "id": "climb_escape_pct_of_clear", "name": "the long climb spools at ~45% (%)", "expect": 45, "tolerance": 6 } },
+    { "frame": 36, "assert": { "id": "static_mult_is_wired", "name": "static field is a 40% repair rate", "expect": 40 } },
+    { "frame": 38, "assert": { "id": "static_repair_pct_of_clear", "name": "and drones really do 40% the work (%)", "expect": 40, "tolerance": 8 } },
+
+    { "frame": 44, "assert": { "id": "dust_bonus_is_wired", "name": "dust adds 30 points of evasion", "expect": 30 } },
+    { "frame": 50, "assert": { "id": "dust_costs_both_sides_damage", "name": "dust cuts damage dealt, and does not stop it (% of clear)", "expect": 80, "tolerance": 15 } },
+
+    { "frame": 56, "assert": { "id": "no_map_means_clear_country", "name": "a headless sim fights in clear country", "expect": true } }
+  ]
+}

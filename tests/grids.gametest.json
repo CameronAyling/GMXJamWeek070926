@@ -13,8 +13,14 @@
     "player_fits": { "gml": "var c = global.run.car; var used = 0; for (var i = 0; i < array_length(c.facs); i++) used += array_length(c.facs[i].cells); return (used == 5 && array_length(c.facs) == 4);" },
     "plate_hole":  { "gml": "var c = global.run.car; var s = car_find_space(c, fac(\"plt_1\").cells); if (!is_array(s)) return false; car_place(c, \"plt_1\", s[0], s[1], 0); return (car_cell_count(c) == 9 && s != -1);" },
 
-    "armour_four_conjoined": {
-      "gml": "var ids = [\"plt_1\", \"plt_2\", \"plt_3\"]; for (var n = 0; n < 3; n++) { var cells = fac(ids[n]).cells; if (array_length(cells) != 4) return false; var seen = [true, false, false, false]; var changed = true; while (changed) { changed = false; for (var a = 0; a < 4; a++) { if (!seen[a]) continue; for (var b = 0; b < 4; b++) { if (seen[b]) continue; var dx = abs(cells[a][0] - cells[b][0]); var dy = abs(cells[a][1] - cells[b][1]); if (dx + dy == 1) { seen[b] = true; changed = true; } } } } for (var a = 0; a < 4; a++) if (!seen[a]) return false; } return true;"
+    "armour_conjoined_and_grows": {
+      "gml": "var ids = [\"plt_1\", \"plt_2\", \"plt_3\"]; var last = 0; for (var n = 0; n < 3; n++) { var cells = fac(ids[n]).cells; var m = array_length(cells); if (m < 4) return false; if (m <= last) return false; last = m; var seen = array_create(m, false); seen[0] = true; var changed = true; while (changed) { changed = false; for (var a = 0; a < m; a++) { if (!seen[a]) continue; for (var b = 0; b < m; b++) { if (seen[b]) continue; var dx = abs(cells[a][0] - cells[b][0]); var dy = abs(cells[a][1] - cells[b][1]); if (dx + dy == 1) { seen[b] = true; changed = true; } } } } for (var a = 0; a < m; a++) if (!seen[a]) return false; } return true;"
+    },
+    "armour_value_tracks_tier": {
+      "gml": "var ids = [\"plt_1\", \"plt_2\", \"plt_3\"]; for (var n = 0; n < 3; n++) { var d = fac(ids[n]); if (d.tier != n + 1) return false; if (d.armour != n + 1) return false; if (d.power != 0) return false; } return true;"
+    },
+    "armour_fits_where_it_must": {
+      "gml": "run_new(); if (!is_array(car_find_space(global.run.car, fac(\"plt_1\").cells))) return false; var c = global.run.car; while (car_can_upgrade_bay(c)) car_upgrade_bay(c); car_attach_trailer(c); if (!is_array(car_find_space(c, fac(\"plt_2\").cells))) return false; if (!is_array(car_find_space(c, fac(\"plt_3\").cells))) return false; var e = car_new(\"T\", 4, 4, 20); return is_array(car_find_space(e, fac(\"plt_3\").cells));"
     },
 
     "fight_b": { "gml": "combat_begin(\"bandits\", false, false); return true;" },
@@ -49,7 +55,9 @@
     { "frame": 6,  "assert": { "id": "player_grid",           "name": "the player starts on a 3x3 chassis",          "expect": true } },
     { "frame": 6,  "assert": { "id": "player_fits",           "name": "starting loadout packs into 5 of 9 cells",    "expect": true } },
     { "frame": 7,  "assert": { "id": "plate_hole",            "name": "and the four cells left are exactly a 2x2",   "expect": true } },
-    { "frame": 6,  "assert": { "id": "armour_four_conjoined", "name": "every armour plate is 4 conjoined cells",     "expect": true } },
+    { "frame": 6,  "assert": { "id": "armour_conjoined_and_grows", "name": "each armour grade is one slab, and bigger than the last", "expect": true } },
+    { "frame": 7,  "assert": { "id": "armour_value_tracks_tier",   "name": "armour I/II/III give 1/2/3 and cost no power",          "expect": true } },
+    { "frame": 8,  "assert": { "id": "armour_fits_where_it_must",  "name": "every grade is placeable where it needs to be",         "expect": true } },
     { "frame": 8,  "code":   ["deep"] },
     { "frame": 10, "assert": { "id": "deep", "name": "sector 3 clears the full-swarm threshold", "expect": true } },
 

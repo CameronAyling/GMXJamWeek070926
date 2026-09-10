@@ -17,6 +17,15 @@ function shp_corner() { return [[0, 0], [1, 0], [0, 1]]; }              // ⌐
 function shp_square() { return [[0, 0], [1, 0], [0, 1], [1, 1]]; }      // 2x2
 function shp_tee()    { return [[0, 0], [1, 0], [2, 0], [1, 1]]; }      // T
 function shp_zig()    { return [[1, 0], [2, 0], [0, 1], [1, 1]]; }      // S
+// Armour grades. The plate starts as a quarter-chassis slab and grows from
+// there, so a heavier grade costs you the room as well as the scrap.
+//
+// Both heavy grades lie ALONG the chassis rather than across it. A maxed rig
+// is six wide by three tall, so a three-tall piece would have to swallow two
+// complete columns end to end and could almost never be placed; two rows deep
+// and three across asks for the same six cells in a shape that fits a car.
+function shp_plate_2() { return [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1]]; }            // 3x2 less a corner
+function shp_plate_3() { return [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]]; }    // 3x2 slab
 
 /// Fill a definition out with defaults so consuming code never has to
 /// existence-check a field.
@@ -153,19 +162,20 @@ function facility_db_init() {
         desc: "Five pellets, scattered. Punishing against a packed grid." });
 
     // === DEFENCE ============================================================
-    // Armour is always a four-cell slab — the one family whose footprint does
-    // NOT grow with tier. Bolting plate on is a quarter of a stock chassis
-    // whatever the grade, so it's the biggest spatial commitment in the game;
-    // the tiers buy protection, and a nastier shape to pack around.
+    // Armour draws no power at all, so the only thing it ever costs you is
+    // room — which is why the grades grow rather than getting cleverer. The
+    // basic plate is a quarter of a stock chassis; the heavy grades are a
+    // third and nearly a half of one. There is no version of "more armour"
+    // that doesn't mean "fewer guns".
     add(db, ids, { id: "plt_1", name: "ABLATIVE PLATE I",   family: "plt", tier: 1, cat: "defence",
-        cells: shp_square(), power: 0, hp: 8,  cost: 25,  armour: 1,
+        cells: shp_square(),  power: 0, hp: 8,  cost: 25,  armour: 1,
         desc: "Bolted scrap, welded as one four-cell slab. -1 damage from every hit (never below 1), no power. Acid ruins it." });
     add(db, ids, { id: "plt_2", name: "ABLATIVE PLATE II",  family: "plt", tier: 2, cat: "defence",
-        cells: shp_tee(),    power: 0, hp: 12, cost: 75,  armour: 2,
-        desc: "Layered plate. -2 damage from every hit. Same four cells, in a shape that fights you." });
+        cells: shp_plate_2(), power: 0, hp: 14, cost: 85,  armour: 2,
+        desc: "Layered plate. -2 damage from every hit. Five cells lying two deep along the flank, and the notch never sits where you want it." });
     add(db, ids, { id: "plt_3", name: "ABLATIVE PLATE III", family: "plt", tier: 3, cat: "defence",
-        cells: shp_zig(),    power: 0, hp: 16, cost: 150, armour: 3,
-        desc: "Composite slab. -3 damage from every hit, no power — and four cells in the worst possible arrangement." });
+        cells: shp_plate_3(), power: 0, hp: 20, cost: 170, armour: 3,
+        desc: "Composite slab. -3 damage from every hit, no power — and a full three-by-two of your flank gone." });
 
     add(db, ids, { id: "shd_1", name: "DEFLECTOR FIELD I",   family: "shd", tier: 1, cat: "defence",
         cells: shp_single(), power: 2, hp: 5,  cost: 65,  shield: 1, regen: 11,

@@ -1,0 +1,61 @@
+{
+  "seed": 404,
+  "fps": 60,
+  "total_frames": 400,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(404); return true;" },
+    "boot":   { "gml": "run_new(); room_goto(rm_map); return true;" },
+
+    "snap": {
+      "gml": "var r = global.run; global.snap = { node: r.node, fuel: r.fuel, scrap: r.scrap, sector: r.sector, moves: r.moves, deadline: r.deadline, facs: array_length(r.car.facs) }; return true;"
+    },
+
+    "on_map":    { "gml": "return (room == rm_map);" },
+    "in_garage": { "gml": "return (room == rm_garage);" },
+
+    "layout_mode": {
+      "gml": "var c = global.garage_ctx; return (c.shop == false && c.from_map == true && array_length(c.stock) == 0);"
+    },
+    "nothing_spent": {
+      "gml": "var r = global.run; var s = global.snap; return (r.node == s.node && r.fuel == s.fuel && r.scrap == s.scrap && r.sector == s.sector && r.moves == s.moves && r.deadline == s.deadline);"
+    },
+
+    "rearrange": {
+      "gml": "var c = global.run.car; if (array_length(c.facs) == 0) return -1; var did = c.facs[0].def; var ox = c.facs[0].ox; var oy = c.facs[0].oy; car_remove(c, 0); var spot = car_find_space(c, fac(did).cells); if (!is_array(spot)) return -2; car_place(c, did, spot[0], spot[1], 0); global.moved = (spot[0] != ox || spot[1] != oy); return array_length(c.facs);"
+    },
+    "layout_survived": {
+      "gml": "return (array_length(global.run.car.facs) == global.snap.facs);"
+    },
+
+    "back_to_map": { "gml": "room_goto(rm_map); return true;" },
+
+    "shop_visit_still_stocks": {
+      "gml": "garage_open(true); var c = global.garage_ctx; return (c.shop == true && c.from_map == false && array_length(c.stock) == 5);"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot"] },
+    { "frame": 20, "assert": { "id": "on_map", "name": "parked on the atlas", "expect": true } },
+    { "frame": 22, "code": ["snap"] },
+
+    { "frame": 30, "inputs": [ { "key": "G", "state": "down" } ] },
+    { "frame": 31, "inputs": [ { "key": "G", "state": "up" } ] },
+
+    { "frame": 90,  "assert": { "id": "in_garage",     "name": "G from the atlas opens the rig",            "expect": true } },
+    { "frame": 92,  "assert": { "id": "layout_mode",   "name": "it opens for layout, with nothing for sale","expect": true } },
+    { "frame": 94,  "assert": { "id": "nothing_spent", "name": "re-packing costs no fuel, scrap or ground", "expect": true } },
+
+    { "frame": 100, "assert": { "id": "rearrange",     "name": "a facility can be lifted and re-seated",    "expect": 4 } },
+
+    { "frame": 110, "code":   ["back_to_map"] },
+    { "frame": 170, "assert": { "id": "on_map",          "name": "and you come back to the atlas",     "expect": true } },
+    { "frame": 172, "assert": { "id": "layout_survived", "name": "with the rig as you left it",        "expect": true } },
+    { "frame": 174, "assert": { "id": "nothing_spent",   "name": "and the run untouched",              "expect": true } },
+
+    { "frame": 200, "assert": { "id": "shop_visit_still_stocks", "name": "a truck stop still opens as a shop", "expect": true } }
+  ]
+}

@@ -16,8 +16,9 @@ function map_resolve_arrival() {
     var n = map_node(r.node);
 
     // Roads run both ways now, so you can drive back through somewhere you've
-    // already been. Whatever was here happened once and isn't happening again.
-    if (n.resolved) {
+    // already been. An ambush or a roadside encounter happened once and isn't
+    // happening again — but a truck stop is a business, and it's still open.
+    if (n.resolved && n.kind != "shop") {
         run_log("Back through " + map_node_title(n) + ". Nothing left here but tyre marks.");
         return;
     }
@@ -29,16 +30,20 @@ function map_resolve_arrival() {
             break;
 
         case "shop":
+            // The stop owns its shelves. They're rolled once and then kept, so
+            // what you bought stays bought and what you couldn't afford is
+            // still there when you come back for it — and bouncing between two
+            // stops can't be used to re-roll the stock.
+            if (!is_array(n.stock)) n.stock = shop_stock();
+            if (n.resolved) {
+                run_log(array_length(n.stock) > 0
+                    ? "Back at the same truck stop. Same coffee, same shelves."
+                    : "Back at the same truck stop. Shelves are bare, but the pumps work.");
+            } else {
+                run_log("Truck stop. Coffee, parts, and somebody's opinion about the road ahead.");
+            }
             n.resolved = true;
-            run_log("Truck stop. Coffee, parts, and somebody's opinion about the road ahead.");
-            garage_open(true);
-            break;
-
-        case "fuel":
-            n.resolved = true;
-            var amt = irandom_range(2, 4);
-            run_add_fuel(amt);
-            run_log("Fuel depot: +" + string(amt) + " litres.");
+            garage_open(true, false, n.stock);
             break;
 
         case "event":

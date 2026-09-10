@@ -1,4 +1,4 @@
-/// scr_run — the run: what you own, where you are, and how close the repo line is.
+/// scr_run — the run: what you own, where you are, and how far behind the schedule.
 ///
 /// Everything here lives in global.run so it survives room_goto. Non-persistent
 /// controllers rebuild themselves on every room change; the run does not.
@@ -9,7 +9,7 @@ function run_new() {
     global.run = {
         sector: 1,
         scrap: 40,
-        fuel: 10,
+        fuel: 16,
         car: car_new_player(),
 
         inv: ["rep_1", "plt_1"],   // owned, not currently bolted on
@@ -17,7 +17,7 @@ function run_new() {
         map: undefined,
         node: 0,
         moves: 0,
-        convoy: -1.6,              // repo line position, in map columns
+        deadline: -1.6,              // the dead-line, in map columns
 
         log: [],
         result: "",                // "dead" | "won" | "" while running
@@ -27,7 +27,7 @@ function run_new() {
 
     map_generate();
     run_log("Tank's full. The atlas says three sectors to the border.");
-    run_log("Repo line is somewhere behind you. Don't let it catch up.");
+    run_log("There Next Tuesday says Tuesday. The dead-line is behind you and it does not slow down.");
 }
 
 function run_exists() {
@@ -48,7 +48,7 @@ function run_add_fuel(_n) {
     global.run.fuel = max(0, global.run.fuel + _n);
 }
 
-/// Hull damage outside combat (events, the convoy catching you).
+/// Hull damage outside combat (events, the dead-line overrunning you).
 function run_damage_hull(_n) {
     var c = global.run.car;
     c.hull = max(0, c.hull - _n);
@@ -96,11 +96,11 @@ function run_next_sector() {
         return;
     }
     r.sector += 1;
-    r.convoy = -1.6;
+    r.deadline = -1.6;
     r.moves = 0;
     map_generate();
     run_log("=== SECTOR " + string(r.sector) + " — " + sector_name(r.sector) + " ===");
-    run_log("New atlas page. The repo line reset to the sector line behind you.");
+    run_log("New atlas page, new delivery window. The dead-line drops back behind you — for now.");
 }
 
 /// Total repair-drone count available in combat.
@@ -112,7 +112,7 @@ function run_drones() {
 
 #macro HULL_REPAIR_COST 3    // scrap per hull point
 #macro FAC_REPAIR_COST  9    // scrap to un-wreck one facility
-#macro FUEL_COST        11   // scrap per litre
+#macro FUEL_COST        10   // scrap per litre
 
 /// Highest facility tier a shop will stock this deep into the run.
 function shop_max_tier() {
@@ -156,11 +156,16 @@ function sell_price(_id) {
     return max(5, round(fac(_id).cost * 0.55));
 }
 
-/// Open the garage. `_shop` adds the truck-stop trading panel.
-function garage_open(_shop) {
+/// Open the garage. `_shop` adds the truck-stop trading panel; `_from_map`
+/// marks a visit made from the road rather than the pre-run fit-out, so the
+/// way back reads as returning to the atlas instead of setting off.
+/// Pass `_stock` to trade from shelves that already exist — a truck stop owns
+/// its array, so what you buy stays bought when you come back through.
+function garage_open(_shop, _from_map = false, _stock = undefined) {
     global.garage_ctx = {
         shop: _shop,
-        stock: _shop ? shop_stock() : [],
+        from_map: _from_map,
+        stock: _shop ? (is_array(_stock) ? _stock : shop_stock()) : [],
     };
     goto_room(rm_garage);
 }

@@ -163,10 +163,10 @@ function events_db() {
     {
         title: "SWARM CROSSING",
         body: "The road ahead is carpeted in chitin — thousands of them, migrating, "
-            + "indifferent. The column will take an hour to pass. The repo line will not wait an hour.",
+            + "indifferent. The column will take an hour to pass. The schedule will not wait an hour.",
         choices: [
-            { label: "Wait it out", hint: "convoy gains ground",
-              act: function() { global.run.convoy += 0.7; return "They pass. The horizon behind you is closer than it was."; } },
+            { label: "Wait it out", hint: "lose ground on the schedule",
+              act: function() { global.run.deadline += 0.7; return "They pass. An hour you will not get back."; } },
             { label: "Drive through them", hint: "hull damage, acid",
               act: function() {
                   var d = irandom_range(5, 11);
@@ -184,11 +184,11 @@ function events_db() {
         body: "A prefab office in the middle of nothing, lit and staffed. An adjuster steps "
             + "out with a tablet and asks, politely, whether you'd like to restructure.",
         choices: [
-            { label: "Sign the restructure", hint: "+70 scrap now",
+            { label: "Sign the restructure", hint: "+70 scrap, lose ground on the schedule",
               act: function() {
                   run_add_scrap(70);
-                  global.run.convoy += 0.5;
-                  return "Seventy scrap up front. They flag your position as a courtesy to the recovery fleet.";
+                  global.run.deadline += 0.5;
+                  return "Seventy scrap up front, and a signature that quietly rewrites your delivery window in their favour.";
               } },
             { label: "Decline politely", hint: "",
               act: function() { return "She smiles, notes something, and goes back inside."; } },
@@ -249,15 +249,15 @@ function events_db() {
         body: "A wall of ochre dust across the whole horizon, shot through with the "
             + "static of something industrial burning inside it.",
         choices: [
-            { label: "Drive into it", hint: "hull damage, lose the tail",
+            { label: "Drive into it", hint: "hull damage, gain on the schedule",
               act: function() {
                   var d = irandom_range(3, 8);
                   run_damage_hull(d);
-                  global.run.convoy -= 0.8;
-                  return "Grit strips " + string(d) + " hull off you — but nothing behind you followed you in.";
+                  global.run.deadline -= 0.8;
+                  return "Grit strips " + string(d) + " hull off you — but you come out the far side ahead of where you went in.";
               } },
-            { label: "Shelter under an overpass", hint: "convoy gains",
-              act: function() { global.run.convoy += 0.55; return "You sit it out. The repo line does not sit anything out."; } },
+            { label: "Shelter under an overpass", hint: "lose ground on the schedule",
+              act: function() { global.run.deadline += 0.55; return "You sit it out. Tuesday does not."; } },
             { label: "Skirt the edge", hint: "-1 fuel",
               act: function() { run_add_fuel(-1); return "A litre spent going the long way round. Worth it."; } },
         ],
@@ -288,13 +288,13 @@ function events_db() {
               req_text: "need 15 scrap",
               act: function() {
                   run_add_scrap(-15);
-                  global.run.convoy -= 0.6;
-                  return "Back roads nobody's mapped. You put real distance between you and the repo line.";
+                  global.run.deadline -= 0.6;
+                  return "Back roads nobody has mapped. You claw back hours you had already written off.";
               } },
             { label: "Trade road news", hint: "+1 fuel",
               act: function() { run_add_fuel(1); return "The other driver swaps you a litre for what you've seen. Fair deal."; } },
-            { label: "Sleep in the cab", hint: "+5 hull, convoy gains",
-              act: function() { run_repair_hull(5); global.run.convoy += 0.45; return "Four hours. You needed it. So did they."; } },
+            { label: "Sleep in the cab", hint: "+5 hull, lose ground on the schedule",
+              act: function() { run_repair_hull(5); global.run.deadline += 0.45; return "Four hours. You needed them. The delivery window did not care."; } },
         ],
     },
     ];

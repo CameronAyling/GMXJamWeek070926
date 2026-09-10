@@ -59,24 +59,34 @@ function ui_tooltip(_title, _body) {
 }
 
 /// Draw + hit-test a button in one call. Returns true when clicked.
+/// A printed key: a cream face with a spot-ink rule, which inks in solid when
+/// the pointer lands on it — the press is the ink going down, not a glow.
 function ui_button(_x1, _y1, _x2, _y2, _label, _enabled = true, _col = -1, _font = -1) {
     var p    = global.PAL;
     var col  = (_col == -1) ? p.cyan : _col;
     var hov  = _enabled && ui_hover(_x1, _y1, _x2, _y2);
-    var edge = _enabled ? (hov ? col : merge_colour(col, p.edge, 0.55)) : p.text_mute;
-    var txt  = _enabled ? (hov ? c_white : merge_colour(col, p.text, 0.4)) : p.text_mute;
+    var edge = _enabled ? col : p.text_mute;
+    var txt  = _enabled ? (hov ? p.lift : col) : p.text_mute;
+
+    // Sits on the page, so it casts a little shadow.
+    draw_set_alpha(_enabled ? 0.18 : 0.08);
+    draw_rectangle_colour(_x1 + 3, _y1 + 4, _x2 + 3, _y2 + 4, p.shade, p.shade, p.shade, p.shade, false);
+    draw_set_alpha(1);
 
     if (hov) {
-        draw_set_alpha(0.16);
-        draw_rectangle_colour(_x1, _y1, _x2, _y2, col, col, col, col, false);
-        draw_set_alpha(1);
+        var lo = merge_colour(col, p.shade, 0.28);
+        draw_rectangle_colour(_x1, _y1, _x2, _y2, col, col, lo, lo, false);
     } else {
         // Near-opaque: buttons often sit over busy artwork and must stay legible.
-        draw_set_alpha(0.93);
-        draw_rectangle_colour(_x1, _y1, _x2, _y2, p.panel, p.panel, p.panel_hi, p.panel_hi, false);
+        draw_set_alpha(0.96);
+        draw_rectangle_colour(_x1, _y1, _x2, _y2, p.panel_hi, p.panel_hi, p.panel, p.panel, false);
         draw_set_alpha(1);
     }
     draw_rectangle_colour(_x1, _y1, _x2, _y2, edge, edge, edge, edge, true);
+    draw_set_alpha(hov ? 0.45 : 0.30);
+    draw_rectangle_colour(_x1 + 3, _y1 + 3, _x2 - 3, _y2 - 3, hov ? p.lift : edge, hov ? p.lift : edge,
+                                                              hov ? p.lift : edge, hov ? p.lift : edge, true);
+    draw_set_alpha(1);
 
     if (_font != -1) draw_set_font(_font);
     draw_label((_x1 + _x2) * 0.5, (_y1 + _y2) * 0.5, _label, txt, fa_center, fa_middle);

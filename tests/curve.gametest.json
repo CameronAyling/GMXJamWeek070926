@@ -38,7 +38,7 @@
     },
 
     "boss_is_hardest": {
-      "gml": "var b = enemy_group(\"corps\", 2.0, false, true)[0]; var c = enemy_group(\"corps\", 1.5, false, false)[0]; return (b.gw * b.gh > c.gw * c.gh && array_length(b.facs) > array_length(c.facs) && b.repo_max > 0 && car_shield_max(b) >= car_shield_max(c) && b.hull > c.hull);"
+      "gml": "var b = enemy_group(\"corps\", 2.0, false, true)[0]; var c = enemy_group(\"corps\", 1.5, false, false)[0]; var bm = 0; for (var k = 0; k < array_length(b.facs); k++) bm += array_length(b.facs[k].cells); var cm = 0; for (var k = 0; k < array_length(c.facs); k++) cm += array_length(c.facs[k].cells); return (b.gw * b.gh > c.gw * c.gh && b.hull > c.hull && b.repo_max > 0 && car_shield_max(b) > 0 && bm > cm);"
     },
     "boss_outweighs_player": {
       "gml": "var b = enemy_group(\"corps\", 2.0, false, true)[0]; var pc = global.run.car; while (car_can_upgrade_bay(pc)) car_upgrade_bay(pc); car_attach_trailer(pc); var maxed = car_cell_count(pc); return (b.gw * b.gh > maxed && b.gw * b.gh < maxed * 2.5);"

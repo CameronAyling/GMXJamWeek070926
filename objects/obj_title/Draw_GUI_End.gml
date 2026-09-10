@@ -1,1 +1,1 @@
-crt_overlay();
+paper_overlay();

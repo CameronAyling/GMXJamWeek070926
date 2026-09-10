@@ -1,2 +1,4 @@
 #:schema ../../.gm-schema/v1.json#sprite
 
+# Drawn at a node centre on the atlas, so the art has to pivot there.
+origin = "centre"

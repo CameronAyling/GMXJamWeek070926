@@ -7,13 +7,46 @@ draw_backdrop();
 
 var accent = won ? global.PAL.ok : global.PAL.danger;
 
-// Horizon glow — sunrise if you made it, burning wreck if you didn't.
-for (var i = 12; i >= 0; i--) {
-    draw_set_alpha(0.035 + i * 0.008);
-    draw_circle_colour(W * 0.5, won ? H * 0.30 : H * 0.62, 130 + i * 16,
-                       accent, p.bg, false);
-    draw_set_alpha(1);
+// The verdict, banged across the page in rubber: a ruled box on a slant with
+// the word inside it and the ink deliberately imperfect.
+var stamp = won ? "CLEARED" : "REPOSSESSED";
+var sang  = won ? -7 : 9;
+draw_set_font(fnt_title);
+draw_set_halign(fa_center);
+draw_set_valign(fa_middle);
+// Banged into the empty left gutter, clear of the manifest — a stamp over the
+// figures would be authentic and unreadable. One scale drives box and text so
+// the rule always frames the word.
+var ssc = 0.40;
+var sw = string_width(stamp) * ssc * 0.5 + 18;
+var sh = string_height(stamp) * ssc * 0.5 + 12;
+var scx = 208, scy = 352;
+
+draw_set_alpha(0.26);
+for (var pass = 0; pass < 2; pass++) {
+    // Two passes offset by a pixel — the double-strike of a stamp rocked on
+    // its pad.
+    var jx = pass * 2, jy = pass * 2;
+    for (var b = 0; b < 2; b++) {
+        var ex = sw - b * 8, ey = sh - b * 8;
+        var cs2 = dcos(sang), sn = dsin(sang);
+        var cnr = [[-ex, -ey], [ex, -ey], [ex, ey], [-ex, ey]];
+        for (var k = 0; k < 4; k++) {
+            var k2 = (k + 1) mod 4;
+            draw_line_width_colour(
+                scx + jx + cnr[k][0]  * cs2 - cnr[k][1]  * sn,
+                scy + jy + cnr[k][0]  * sn  + cnr[k][1]  * cs2,
+                scx + jx + cnr[k2][0] * cs2 - cnr[k2][1] * sn,
+                scy + jy + cnr[k2][0] * sn  + cnr[k2][1] * cs2,
+                5, accent, accent);
+        }
+    }
+    draw_text_transformed_colour(scx + jx, scy + jy, stamp, ssc, ssc, sang,
+                                 accent, accent, accent, accent, 1);
 }
+draw_set_alpha(1);
+draw_set_halign(fa_left);
+draw_set_valign(fa_top);
 
 draw_glow_text(W * 0.5, 150, won ? "BORDER CLEARED" : "END OF THE LINE",
                accent, fa_center, fa_middle, fnt_title);

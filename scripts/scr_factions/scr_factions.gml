@@ -62,6 +62,32 @@ function enemy_add(_car, _def_id) {
     return false;
 }
 
+/// Fit the heaviest grade that will actually go on, walking down the list.
+///
+/// Armour is the family that needs this. A grade is only worth asking for if
+/// the chassis has that exact shape free, and a sixteen-cell corp with a
+/// reactor, a shield and a gun aboard has five cells left in whatever
+/// arrangement the packing happened to leave — a five-cell plate lines up with
+/// them about a quarter of the time. Asking for the slab and taking the square
+/// when it won't go beats arriving with no plate at all.
+function enemy_add_best(_car, _ids) {
+    for (var i = 0; i < array_length(_ids); i++) {
+        if (enemy_add(_car, _ids[i])) return _ids[i];
+    }
+    return "";
+}
+
+/// Armour grades to try for a difficulty, heaviest first.
+///
+/// Same thresholds tier_pick uses, so plate keeps step with every other family
+/// — but expressed as a ladder, because whether a grade goes on is a question
+/// about the shape of the room left, not just the sector.
+function plate_ladder(_diff) {
+    if (_diff > 1.80) return ["plt_3", "plt_2", "plt_1"];
+    if (_diff > 1.45) return ["plt_2", "plt_1"];
+    return ["plt_1"];
+}
+
 /// Add reactors until the car can actually run what's bolted to it.
 function enemy_balance_power(_car) {
     if (_car.organic) return;   // nothing to balance — it has no power economy
@@ -81,6 +107,7 @@ function enemy_balance_power(_car) {
 /// Pick a tier-appropriate id from a family for the current difficulty.
 /// `_cap` limits how high it will go — small chassis can't house tier 3.
 function tier_pick(_family, _diff, _cap = 3) {
+
     // Thresholds track run_difficulty(): ~0.85-1.10 in sector 1, 1.30-1.55 in
     // sector 2, 1.75-2.00 in sector 3. So tier 2 lands as you enter sector 2
     // and tier 3 appears partway through sector 3.
@@ -108,9 +135,11 @@ function enemy_car(_faction, _name, _gw, _gh, _hull, _diff, _core, _pool, _fill,
     if (!_organic) enemy_add(c, tier_pick("reac", _diff, _cap_tier));
 
     // Core goes on in order, so whatever the faction must never be without
-    // gets first claim on the grid.
+    // gets first claim on the grid. An entry given as an array is a ladder:
+    // the heaviest grade that fits, rather than one grade or nothing.
     for (var i = 0; i < array_length(_core); i++) {
-        enemy_add(c, tier_pick(_core[i], _diff, _cap_tier));
+        if (is_array(_core[i])) enemy_add_best(c, _core[i]);
+        else                    enemy_add(c, tier_pick(_core[i], _diff, _cap_tier));
     }
 
     var extras = _fill + ((_diff > 1.45) ? 1 : 0);
@@ -146,7 +175,9 @@ function enemy_group(_faction, _diff, _elite, _boss) {
         b.faction = "corps";
         enemy_add(b, "reac_3");
         enemy_add(b, "shd_3");
-        enemy_add(b, "plt_1");
+        // Composite, not the scrap grade — thirty cells of chassis can carry
+        // the heaviest plate on the road and the finale should be wearing it.
+        enemy_add(b, "plt_3");
         enemy_add(b, "riv_2");
         enemy_add(b, "tes_2");
         enemy_add(b, "hrp_1");
@@ -207,11 +238,22 @@ function enemy_group(_faction, _diff, _elite, _boss) {
             break;
 
         case "corps":
-            // Defensive wall on a clock. Sixteen cells, and the plate eats four
-            // of them, so they are genuinely packed.
+            // Defensive wall on a clock. Sixteen cells, and by sector 3 the
+            // plate alone eats six of them, so they are genuinely packed.
+            //
+            // Core order matters: the gun is claimed BEFORE the plate. With
+            // plate second, a tier-3 reactor, shield and slab filled the grid
+            // and the rivet cannon never found room — every late corp rolled
+            // up unable to shoot, which turns their repossession clock from a
+            // threat into a countdown you can ignore.
+            //
+            // The plate is pinned to grade II. The six-cell slab is more than a
+            // third of their chassis, and asking for it just meant they arrived
+            // with no plate at all. The Chitin carry no reactor, so they can
+            // afford the heavy one; a corp buys its survivability in shields.
             var cc = enemy_car("corps", "VANTAGE ADJUSTER", 4, 4,
                 enemy_hull(22, _diff, hull_mult), _diff,
-                ["shd", "plt", "pdc", "riv"], ["shd", "las", "col", "pdc"], 1);
+                ["shd", "riv", plate_ladder(_diff), "pdc"], ["shd", "las", "col", "pdc"], 1);
             cc.repo_max = max(32, 46 - _diff * 4);
             cc.repo = 0;
             array_push(cars, cc);
@@ -222,7 +264,7 @@ function enemy_group(_faction, _diff, _elite, _boss) {
             // They only show up once you're deep enough to handle that.
             var ic = enemy_car("insects", "CHITIN DRIFTER", 4, 4,
                 enemy_hull(17, _diff, hull_mult), _diff,
-                ["acd", "plt", "las"], ["acd", "plt", "drv", "flm"], 2, true);
+                ["acd", plate_ladder(_diff), "las"], ["acd", "plt", "drv", "flm"], 2, true);
             ic.regen = 0.25 + _diff * 0.15;   // hp per second, spread over damage
             array_push(cars, ic);
             break;

@@ -1,0 +1,85 @@
+{
+  "seed": 606,
+  "fps": 60,
+  "total_frames": 300,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(606); return true;" },
+    "boot":   { "gml": "run_new(); room_goto(rm_map); return true;" },
+
+    "park_at_shop": {
+      "gml": "var r = global.run; map_generate(); var si = -1; for (var i = 0; i < array_length(r.map.nodes); i++) if (r.map.nodes[i].kind == \"shop\") { si = i; break; } if (si < 0) return -1; r.node = si; global.shopnode = si; global.run.scrap = 9999; return si;"
+    },
+
+    "_note_visit": { "gml": "return true;" },
+
+    "visit": {
+      "gml": "with (obj_map) map_resolve_arrival(); global.pending_room = -1; return true;"
+    },
+
+    "stock_rolled": {
+      "gml": "var n = map_node(global.shopnode); return is_array(n.stock) ? array_length(n.stock) : -1;"
+    },
+    "garage_opened_as_shop": {
+      "gml": "var c = global.garage_ctx; return (c.shop == true && array_length(c.stock) > 0);"
+    },
+    "node_and_garage_share_shelves": {
+      "gml": "var n = map_node(global.shopnode); var before = array_length(n.stock); array_delete(global.garage_ctx.stock, 0, 1); return (array_length(n.stock) == before - 1);"
+    },
+    "snapshot_ids": {
+      "gml": "var n = map_node(global.shopnode); global.shelf = []; for (var i = 0; i < array_length(n.stock); i++) array_push(global.shelf, n.stock[i]); return array_length(global.shelf);"
+    },
+    "shelves_unchanged_on_return": {
+      "gml": "var c = global.garage_ctx.stock; if (array_length(c) != array_length(global.shelf)) return false; for (var i = 0; i < array_length(c); i++) if (c[i] != global.shelf[i]) return false; return true;"
+    },
+    "resolved_but_reopens": {
+      "gml": "return (map_node(global.shopnode).resolved == true && global.garage_ctx.shop == true);"
+    },
+
+    "sell_out": {
+      "gml": "var n = map_node(global.shopnode); while (array_length(n.stock) > 0) array_delete(n.stock, 0, 1); return array_length(n.stock);"
+    },
+    "bare_shop_still_opens": {
+      "gml": "return (global.garage_ctx.shop == true && array_length(global.garage_ctx.stock) == 0);"
+    },
+
+    "_note_oneshot": { "gml": "return true;" },
+
+    "fight_is_one_shot": {
+      "gml": "var r = global.run; var fi = -1; for (var i = 0; i < array_length(r.map.nodes); i++) if (r.map.nodes[i].kind == \"fight\") { fi = i; break; } if (fi < 0) return -1; r.map.nodes[fi].resolved = true; r.node = fi; with (obj_map) map_resolve_arrival(); global.pending_room = -1; var last = r.log[array_length(r.log) - 1]; return (string_pos(\"tyre marks\", last) > 0);"
+    },
+    "event_is_one_shot": {
+      "gml": "var r = global.run; var ei = -1; for (var i = 0; i < array_length(r.map.nodes); i++) if (r.map.nodes[i].kind == \"event\") { ei = i; break; } if (ei < 0) return -1; r.map.nodes[ei].resolved = true; r.node = ei; with (obj_map) map_resolve_arrival(); global.pending_room = -1; var last = r.log[array_length(r.log) - 1]; return (string_pos(\"tyre marks\", last) > 0);"
+    },
+
+    "every_sector_shop_rolls_five": {
+      "gml": "for (var g = 0; g < 40; g++) { global.run.sector = 1 + (g mod 3); var s = shop_stock(); if (array_length(s) != 5) return false; } return true;"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+    { "frame": 2,  "code": ["boot"] },
+    { "frame": 20, "code": ["park_at_shop"] },
+
+    { "frame": 24, "code":   ["visit"] },
+    { "frame": 26, "assert": { "id": "stock_rolled",           "name": "a truck stop rolls five items on arrival", "expect": 5 } },
+    { "frame": 27, "assert": { "id": "garage_opened_as_shop",  "name": "and opens as a shop",                      "expect": true } },
+    { "frame": 28, "assert": { "id": "node_and_garage_share_shelves", "name": "buying takes it off that stop's shelf", "expect": true } },
+    { "frame": 29, "assert": { "id": "snapshot_ids",           "name": "four left after the purchase",             "expect": 4 } },
+
+    { "frame": 34, "code":   ["visit"] },
+    { "frame": 36, "assert": { "id": "resolved_but_reopens",        "name": "a used truck stop opens again",          "expect": true } },
+    { "frame": 37, "assert": { "id": "shelves_unchanged_on_return", "name": "same shelves — no restock, no re-roll",  "expect": true } },
+
+    { "frame": 42, "code":   ["sell_out"] },
+    { "frame": 44, "code":   ["visit"] },
+    { "frame": 46, "assert": { "id": "bare_shop_still_opens", "name": "a sold-out stop still opens for fuel and hull", "expect": true } },
+
+    { "frame": 52, "assert": { "id": "fight_is_one_shot", "name": "a cleared roadblock stays cleared", "expect": true } },
+    { "frame": 54, "assert": { "id": "event_is_one_shot", "name": "a played-out waypoint stays played out", "expect": true } },
+
+    { "frame": 60, "assert": { "id": "every_sector_shop_rolls_five", "name": "shops stock five at every sector", "expect": true } }
+  ]
+}

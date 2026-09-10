@@ -1,14 +1,17 @@
 /// scr_map — the road atlas.
 ///
 /// A sector is a left-to-right column graph drawn as a folded paper road map.
-/// You burn a litre of fuel per hop, and the repo line creeps in from the left
+/// You burn a litre of fuel per hop, and the dead-line creeps in from the left
 /// eating columns behind you — the reason you can't sightsee the whole sector.
 
-#macro MAP_X0        150
-#macro MAP_X1        1120
-#macro MAP_Y0        150
-#macro MAP_Y1        600
-#macro CONVOY_STEP   0.55    // columns the repo line advances per hop
+// Node bounds, kept inside the printed border of Spr_Map_01_Base with enough
+// margin for a 44px badge plus its label underneath.
+#macro MAP_X0        112
+#macro MAP_X1        1168
+#macro MAP_Y0        186
+#macro MAP_Y1        628
+#macro DEADLINE_STEP   0.55    // columns the dead-line advances per hop
+#macro HAZARD_COVER    0.40    // most of a sector that may sit inside a hazard
 
 /// Pick a faction for a fight node, weighted by how deep the run is.
 function map_pick_faction(_sector) {
@@ -41,6 +44,8 @@ function map_node_new(_col, _row, _px, _py, _kind) {
         visited: false,
         resolved: false,     // its encounter has been played out
         label: "",
+        hazard: "",          // scr_hazards id, or "" for clear country
+        stock: undefined,    // a truck stop's shelves, rolled on first arrival
     };
 }
 
@@ -48,7 +53,7 @@ function map_node_new(_col, _row, _px, _py, _kind) {
 ///
 /// Roads are two-way: `links` holds both directions, so you can double back,
 /// cut sideways within a column, or take the long way round. The graph is laid
-/// out in columns anyway, because that's what makes the repo line legible —
+/// out in columns anyway, because that is what makes the dead-line legible —
 /// going backwards means driving towards it.
 function map_generate() {
     var r = global.run;
@@ -75,10 +80,11 @@ function map_generate() {
             if (c == 0) kind = "start";
             else if (c == cols - 1) kind = "exit";
             else {
+                // No fuel depots — the tank is topped up at truck stops and by
+                // roadside events, so the share they held goes to both.
                 var roll = irandom(99);
-                if      (roll < 55) kind = "fight";
-                else if (roll < 75) kind = "event";
-                else if (roll < 87) kind = "fuel";
+                if      (roll < 52) kind = "fight";
+                else if (roll < 82) kind = "event";
                 else                kind = "shop";
             }
 
@@ -100,6 +106,57 @@ function map_generate() {
         var pick = mid[irandom(array_length(mid) - 1)];
         nodes[pick].kind = "shop";
         nodes[pick].faction = "";
+    }
+
+    // --- hazard regions ----------------------------------------------------
+    // Bad country comes in patches, so a hazard is an area of the page that
+    // happens to contain some stops rather than a label pinned to one. Two
+    // rules keep it from taking over: the yard and the on-ramp are always in
+    // clear air, and no more than HAZARD_COVER of the sector can be inside a
+    // region, so there is always a clean way through to route for.
+    var regions = [];
+    var want_regions = 1 + irandom(1) + ((r.sector >= 3) ? 1 : 0);
+    var cover_cap = max(1, floor(array_length(nodes) * HAZARD_COVER));
+    var covered = 0;
+
+    for (var attempt = 0; attempt < 40 && array_length(regions) < want_regions; attempt++) {
+        // Seed on a node so a region always has something in it, then drift the
+        // centre off that node so the shape doesn't look pinned.
+        var seed_i = irandom(array_length(nodes) - 1);
+        if (nodes[seed_i].kind == "start" || nodes[seed_i].kind == "exit") continue;
+        if (nodes[seed_i].hazard != "") continue;
+
+        var hid = hazard_pick_any();
+        var reg = hazard_region_new(hid,
+                                    nodes[seed_i].px + random_range(-40, 40),
+                                    nodes[seed_i].py + random_range(-30, 30),
+                                    random_range(124, 176));
+
+        // Who would this cover, and is that allowed?
+        var inside = [];
+        var ok = true;
+        var bites = false;
+        for (var i = 0; i < array_length(nodes) && ok; i++) {
+            if (!hazard_region_contains(reg, nodes[i].px, nodes[i].py)) continue;
+            // Never swallow the endpoints, and never double up on a node that
+            // is already inside another region.
+            if (nodes[i].kind == "start" || nodes[i].kind == "exit") ok = false;
+            else if (nodes[i].hazard != "") ok = false;
+            else {
+                array_push(inside, i);
+                if (!hazard(hid).combat || nodes[i].kind == "fight") bites = true;
+            }
+        }
+
+        // A region has to contain something, has to actually do something to at
+        // least one of those stops, and has to fit under the cover cap.
+        if (!ok || !bites) continue;
+        if (array_length(inside) == 0) continue;
+        if (covered + array_length(inside) > cover_cap) continue;
+
+        for (var i = 0; i < array_length(inside); i++) nodes[inside[i]].hazard = hid;
+        covered += array_length(inside);
+        array_push(regions, reg);
     }
 
     // --- edges -------------------------------------------------------------
@@ -195,6 +252,7 @@ function map_generate() {
         nodes: nodes,
         edges: edges,
         col_members: col_members,
+        hazards: regions,
         stains: stains,
         blobs: blobs,
         crease: irandom_range(520, 760),
@@ -219,14 +277,14 @@ function map_is_reachable(_i) {
     return false;
 }
 
-/// A node is gone once the repo line has swept past its column.
+/// A node is gone once the dead-line has swept past its column.
 function map_node_lost(_i) {
-    return map_node(_i).col <= global.run.convoy;
+    return map_node(_i).col <= global.run.deadline;
 }
 
 /// Can you make this hop right now? Running dry doesn't strand you — it just
 /// costs hull instead of fuel, so an empty tank is a slow bleed, not a dead end.
-/// Roads are two-way, but the repo line is a wall: anything it has already
+/// Roads are two-way, but the dead-line is a wall: anything it has already
 /// swept is gone, and doubling back into it isn't a choice you get to make.
 function map_can_travel(_i) {
     if (!map_is_reachable(_i)) return false;
@@ -234,36 +292,66 @@ function map_can_travel(_i) {
     return true;
 }
 
-/// Commit the hop: burn fuel, advance the repo line, mark the node visited.
-/// Returns "caught" if the convoy overran you on arrival, else "".
+/// Commit the hop: burn fuel, advance the dead-line, mark the node visited.
+/// Returns "caught" if the dead-line overran you on arrival, else "".
 function map_travel(_i) {
     var r = global.run;
-    if (r.fuel > 0) {
-        r.fuel -= 1;
-    } else {
-        run_damage_hull(4);
-        run_log("Running on fumes — you tore 4 hull out of the rig to make that hop.");
+
+    // Rough country charges by the litre, so pay it a litre at a time and take
+    // the fumes penalty for each one you haven't got.
+    var cost = hazard_fuel_cost(map_node(_i));
+    var dry  = 0;
+    for (var k = 0; k < cost; k++) {
+        if (r.fuel > 0) r.fuel -= 1;
+        else            dry += 1;
     }
+    if (dry > 0) {
+        run_damage_hull(4 * dry);
+        run_log("Running on fumes — you tore " + string(4 * dry) + " hull out of the rig to make that hop.");
+    } else if (cost > 1) {
+        run_log("Broken ground the whole way. That crossing cost " + string(cost) + " litres.");
+    }
+
     r.node = _i;
     r.moves += 1;
-    r.convoy += CONVOY_STEP;
+    r.deadline += DEADLINE_STEP;
 
     var n = map_node(_i);
     n.visited = true;
 
-    if (n.col <= r.convoy) {
-        run_log("The repo line rolled over you before the dust settled.");
+    if (n.col <= r.deadline) {
+        run_log("The dead-line swept past you before the dust settled. You are officially late.");
         return "caught";
     }
     return "";
 }
 
-/// Convoy pixel x for drawing the sweep line.
-function map_convoy_x() {
+/// Dead-line pixel x for drawing the sweep.
+function map_deadline_x() {
     var r = global.run;
     var cols = r.map.cols;
-    var t = (r.convoy) / max(1, cols - 1);
+    var t = (r.deadline) / max(1, cols - 1);
     return lerp(MAP_X0, MAP_X1, t);
+}
+
+/// Badge art for a node, or -1 when there's no sprite for that kind and it
+/// gets drawn by hand instead (fuel, on-ramp, the staging yard).
+function map_node_sprite(_n, _known) {
+    if (!_known) return Spr_Icon_Map_Unknown;
+
+    switch (_n.kind) {
+        case "shop":  return Spr_Icon_Map_Shop;
+        case "event": return Spr_Icon_Map_Unknown;   // a waypoint IS an unknown
+        case "fight":
+            switch (_n.faction) {
+                case "bandits": return Spr_Icon_Map_Bandits;
+                case "robots":  return Spr_Icon_Map_BOTS;
+                case "corps":   return Spr_Icon_Map_CORPORATE_;
+                case "insects": return Spr_Icon_Map_Ants;
+            }
+            return Spr_Icon_Map_Unknown;
+    }
+    return -1;
 }
 
 function map_node_title(_n) {
@@ -271,7 +359,6 @@ function map_node_title(_n) {
         case "start": return "STAGING YARD";
         case "exit":  return "ON-RAMP";
         case "shop":  return "TRUCK STOP";
-        case "fuel":  return "FUEL DEPOT";
         case "event": return "WAYPOINT";
         case "fight": return string_upper(faction_name(_n.faction));
         default:      return "WAYPOINT";

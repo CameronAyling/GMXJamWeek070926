@@ -1,84 +1,53 @@
 var p = global.PAL;
 var W = display_get_gui_width(), H = display_get_gui_height();
+var vpx = W * 0.5;
 
-// ---------------------------------------------------------------- backdrop
-draw_rectangle_colour(0, 0, W, H * 0.62, make_colour_rgb(38, 10, 52), make_colour_rgb(38, 10, 52),
-                                          make_colour_rgb(96, 18, 74), make_colour_rgb(96, 18, 74), false);
-draw_rectangle_colour(0, H * 0.62, W, H, p.bg, p.bg, make_colour_rgb(16, 8, 30), make_colour_rgb(16, 8, 30), false);
+// ---------------------------------------------------------------- the cover
+// This is the front of the atlas the map screen is a page from: same stock,
+// same banner, same badges.
+draw_backdrop();
 
-// Low sun behind the skyline.
-var sun_y = H * 0.50;
-for (var i = 10; i >= 0; i--) {
-    draw_set_alpha(0.05 + i * 0.012);
-    draw_circle_colour(W * 0.5, sun_y, 120 + i * 9, p.magenta, make_colour_rgb(60, 12, 60), false);
+// --------------------------------------------------------------- the route
+// A sample route printed across the lower half, ink lines with a lighter core
+// exactly as the atlas draws its roads.
+for (var i = 0; i < array_length(cover_route) - 1; i++) {
+    var a = cover_route[i], b2 = cover_route[i + 1];
+    draw_set_alpha(0.30);
+    draw_line_width_colour(a.px, a.py, b2.px, b2.py, 6, p.atlas_ink, p.atlas_ink);
+    draw_set_alpha(0.80);
+    draw_line_width_colour(a.px, a.py, b2.px, b2.py, 3, p.atlas_live, p.atlas_live);
     draw_set_alpha(1);
 }
-draw_circle_colour(W * 0.5, sun_y, 118, make_colour_rgb(255, 150, 80), p.magenta, false);
-// Scanline slices across the sun disc — the retro-futurist cliché, earned.
-for (var yy = sun_y - 118; yy < sun_y + 118; yy += 12) {
-    draw_set_alpha(0.55);
-    draw_rectangle_colour(W * 0.5 - 130, yy, W * 0.5 + 130, yy + 4,
-        make_colour_rgb(38, 10, 52), make_colour_rgb(38, 10, 52),
-        make_colour_rgb(38, 10, 52), make_colour_rgb(38, 10, 52), false);
-    draw_set_alpha(1);
+for (var i = 0; i < array_length(cover_badges); i++) {
+    var bd  = cover_badges[i];
+    var nd  = cover_route[bd.at];
+    var ics = 40;
+    draw_sprite_ext(bd.spr, 0, nd.px, nd.py,
+                    ics / sprite_get_width(bd.spr), ics / sprite_get_height(bd.spr),
+                    0, c_white, 0.92);
 }
 
-// ---------------------------------------------------------------- skyline
-var horizon = H * 0.615;
-for (var i = 0; i < array_length(skyline); i++) {
-    var b = skyline[i];
-    var bh = b.h;
-    draw_rectangle_colour(b.px, horizon - bh, b.px + b.w, horizon,
-        make_colour_rgb(14, 8, 26), make_colour_rgb(14, 8, 26),
-        make_colour_rgb(8, 5, 16), make_colour_rgb(8, 5, 16), false);
-    // A few lit windows.
-    for (var wy = horizon - bh + 8; wy < horizon - 8; wy += 14) {
-        for (var wx = b.px + 6; wx < b.px + b.w - 8; wx += 12) {
-            if (((wx + wy + b.lit * 7) mod 37) < 9) {
-                draw_set_alpha(0.5);
-                draw_rectangle_colour(wx, wy, wx + 4, wy + 6, p.amber, p.amber, p.amber, p.amber, false);
-                draw_set_alpha(1);
-            }
-        }
-    }
-}
+// ---------------------------------------------------------------- masthead
+draw_label(vpx, 62, "GLOBAL INTERSTATE  ·  MOTORISTS' ATLAS  ·  47TH EDITION",
+           p.text_dim, fa_center, fa_middle, fnt_small);
 
-// ---------------------------------------------------------------- road grid
-var vpx = W * 0.5, vpy = horizon;
-draw_set_alpha(0.30);
-for (var i = -12; i <= 12; i++) {
-    var col = (abs(i) < 3) ? p.cyan : p.violet;
-    draw_line_colour(vpx, vpy, vpx + i * 150, H, col, merge_colour(col, p.bg, 0.85));
-}
-var scroll = 1 - frac(t * 0.55);
-for (var k = 0; k < 20; k++) {
-    var z = k + scroll;
-    var yy = vpy + (H - vpy) / (1 + z * 0.48);
-    if (yy > H || yy < vpy + 1) continue;
-    var a = 0.42 * (1 - (yy - vpy) / max(1, H - vpy) * 0.15) * min(1, (yy - vpy) / 30);
-    draw_set_alpha(a);
-    draw_line_colour(0, yy, W, yy, p.cyan, p.magenta);
-}
+draw_glow_text(vpx, 126, "FASTER THAN FUEL", p.atlas_ink, fa_center, fa_middle, fnt_title);
+
+// The orange banner the map screen wears under its masthead.
+var bnx = 268, bny = 172, bnw = 744, bnh = 34;
+draw_rectangle_colour(bnx, bny, bnx + bnw, bny + bnh,
+    make_colour_rgb(232, 106, 74), make_colour_rgb(236, 118, 78),
+    make_colour_rgb(226,  96, 66), make_colour_rgb(230, 108, 72), false);
+draw_set_alpha(0.5);
+draw_rectangle_colour(bnx, bny, bnx + bnw, bny + bnh, p.atlas_ink, p.atlas_ink, p.atlas_ink, p.atlas_ink, true);
 draw_set_alpha(1);
+draw_label(vpx, bny + bnh * 0.5, "A LONG HAUL THROUGH THE CREDITOR STATES",
+           make_colour_rgb(58, 30, 22), fa_center, fa_middle, fnt_term);
 
-// ---------------------------------------------------------------- title
-var bob = dsin(t * 40) * 3;
-
-draw_set_font(fnt_title);
-var title = "FASTER THAN FUEL";
-// Chromatic split, then the clean pass on top.
+// Twin rules under the banner, the map's masthead trick.
 draw_set_alpha(0.55);
-draw_label(vpx - 4, 132 + bob, title, make_colour_rgb(255, 40, 90), fa_center, fa_middle);
-draw_label(vpx + 4, 132 + bob, title, make_colour_rgb(40, 220, 255), fa_center, fa_middle);
-draw_set_alpha(1);
-draw_label(vpx, 132 + bob, title, c_white, fa_center, fa_middle);
-
-draw_set_font(fnt_term);
-draw_label(vpx, 186 + bob, "A LONG HAUL THROUGH THE CREDITOR STATES", p.magenta, fa_center, fa_middle);
-
-// Rule under the title.
-draw_set_alpha(0.7);
-draw_line_width_colour(vpx - 280, 208, vpx + 280, 208, 2, p.violet, p.violet);
+draw_line_width_colour(bnx, bny + bnh + 6, bnx + bnw, bny + bnh + 6, 2, p.atlas_live, p.atlas_live);
+draw_line_width_colour(bnx, bny + bnh + 11, bnx + bnw, bny + bnh + 11, 1, p.atlas_live, p.atlas_live);
 draw_set_alpha(1);
 
 // ---------------------------------------------------------------- menu
@@ -142,5 +111,18 @@ if (show_briefing) {
         draw_label(ex + 16, sy + 31, eff[i][2], p.text_dim);
     }
 }
+
+// ------------------------------------------------------------ imprint
+// The publisher's roundel, top-right, exactly where the atlas page carries it.
+var gix = 1216, giy = 58, gir = 30;
+draw_circle_colour(gix, giy, gir, p.atlas_live, merge_colour(p.atlas_live, p.shade, 0.3), false);
+draw_set_alpha(0.45);
+draw_circle_colour(gix, giy, gir, p.atlas_ink, p.atlas_ink, true);
+draw_set_alpha(1);
+draw_label(gix, giy, "GI", p.atlas_cream, fa_center, fa_middle, fnt_term_big);
+
+draw_label(30, H - 30, "LEGALLY NOT A MONOPOLY", p.text_mute, fa_left, fa_middle, fnt_small);
+draw_label(W - 30, H - 30, "GLOBAL INTERSTATE  ·  EVERYTHING TOMORROW NEEDS",
+           p.text_dim, fa_right, fa_middle, fnt_small);
 
 ui_draw_tooltip();

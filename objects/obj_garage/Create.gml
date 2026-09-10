@@ -1,7 +1,9 @@
 game_init();
 
 if (!run_exists()) run_new();
-if (!variable_global_exists("garage_ctx")) global.garage_ctx = { shop: false, stock: [] };
+if (!variable_global_exists("garage_ctx")) global.garage_ctx = { shop: false, from_map: false, stock: [] };
+// An older context from before this field existed still has to open cleanly.
+if (!variable_struct_exists(global.garage_ctx, "from_map")) global.garage_ctx.from_map = false;
 
 // Grid geometry. The cell size shrinks as the chassis is widened so the rig —
 // including its cab overhang — always clears the inventory panel to the right.

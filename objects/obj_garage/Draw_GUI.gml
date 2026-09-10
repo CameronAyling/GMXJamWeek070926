@@ -253,10 +253,10 @@ if (ctx.shop) {
 
     // Fuel.
     if (ui_button(sx1 + 14, svy + 86, sx1 + 14 + bw, svy + 86 + bh,
-        "FUEL +2  (" + string(FUEL_COST * 2) + ")", r.scrap >= FUEL_COST * 2, p.amber)) {
-        run_add_scrap(-FUEL_COST * 2);
-        run_add_fuel(2);
-        garage_msg("Two more in the tank.");
+        "FUEL +3  (" + string(FUEL_COST * 3) + ")", r.scrap >= FUEL_COST * 3, p.amber)) {
+        run_add_scrap(-FUEL_COST * 3);
+        run_add_fuel(3);
+        garage_msg("Three more in the tank.");
     }
 
     // Chassis extension — the big scrap sink, and the only way to get more room.
@@ -333,7 +333,8 @@ if (msg_t > 0) {
 draw_set_font(fnt_term_big);
 var can_go = !over && held == "";
 if (ui_button(W - 322, by1 + 14, W - 22, by1 + 56,
-              ctx.shop ? "BACK TO THE ATLAS" : "HIT THE ROAD", can_go, can_go ? p.cyan : p.text_mute)) {
+              (ctx.shop || ctx.from_map) ? "BACK TO THE ATLAS" : "HIT THE ROAD",
+              can_go, can_go ? p.cyan : p.text_mute)) {
     goto_room(rm_map);
 }
 

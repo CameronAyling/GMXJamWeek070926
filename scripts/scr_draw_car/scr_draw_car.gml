@@ -261,7 +261,7 @@ function draw_chassis(_car, _px, _py, _cs, _col, _flip = false) {
     draw_set_alpha(0.55);
     draw_rectangle_colour(bx1, by1, bx2, by2, p.panel, p.panel, p.bg, p.bg, false);
     draw_set_alpha(1);
-    draw_neon_rect(bx1, by1, bx2, by2, _col, 0.85, 3);
+    draw_ink_rect(bx1, by1, bx2, by2, _col, 0.85, 3);
 
     // Windscreen: a bar across the cab end of the roof.
     var wsx = nx1 - dir * _cs * 0.2;
@@ -308,7 +308,7 @@ function draw_chassis(_car, _px, _py, _cs, _col, _flip = false) {
             draw_set_alpha(0.5);
             draw_rectangle_colour(tx1, tv1, tx2, tv2, p.panel, p.panel, p.bg, p.bg, false);
             draw_set_alpha(1);
-            draw_neon_rect(tx1, tv1, tx2, tv2, _col, 0.7, 2);
+            draw_ink_rect(tx1, tv1, tx2, tv2, _col, 0.7, 2);
 
             // Coupling bar at the join.
             draw_line_width_colour(tx2, tv1 + 3, tx2, tv2 - 3, 4, _col, dim);
@@ -362,12 +362,13 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     else if (f.st.oil  > 0) col = merge_colour(base, p.st_oil,  0.6);
     else if (!f.powered)    col = merge_colour(base, p.text_mute, 0.62);
 
-    if (f.flash > 0) col = merge_colour(col, c_white, min(1, f.flash * 5));
+    if (f.flash > 0) col = merge_colour(col, p.lift, min(1, f.flash * 5));
 
-    // Fires flicker; electricity strobes.
+    // Fires flicker; electricity strobes. Kept shallow — on cream stock a dip
+    // in alpha reads as the mark fading off the page, not as animation.
     var pulse = 1;
-    if (f.st.fire > 0) pulse = 0.78 + 0.22 * dsin(current_time * 0.7 + _idx * 90);
-    if (f.st.elec > 0) pulse = (dsin(current_time * 1.6 + _idx * 50) > 0) ? 1 : 0.55;
+    if (f.st.fire > 0) pulse = 0.88 + 0.12 * dsin(current_time * 0.7 + _idx * 90);
+    if (f.st.elec > 0) pulse = (dsin(current_time * 1.6 + _idx * 50) > 0) ? 1 : 0.78;
 
     // Dominant status drives the overlay. Fire beats everything, because a
     // facility that's burning is the thing you must deal with right now.
@@ -377,13 +378,14 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     else if (f.st.acid > 0) st_key = "acid";
     else if (f.st.oil  > 0) st_key = "oil";
 
-    // Fill each cell. Afflicted facilities fill harder so they read at a glance.
-    var fill_a = (st_key == "") ? 0.26 : 0.44;
+    // Fill each cell. Afflicted facilities fill harder so they read at a
+    // glance — on paper that means laying down more ink, not more light.
+    var fill_a = (st_key == "") ? 0.42 : 0.74;
     for (var c = 0; c < array_length(f.cells); c++) {
         var cx = _px + (f.ox + f.cells[c][0]) * _cs;
         var cy = _py + (f.oy + f.cells[c][1]) * _cs;
         draw_set_alpha(fill_a * pulse);
-        draw_rectangle_colour(cx + 1, cy + 1, cx + _cs - 1, cy + _cs - 1, col, col, merge_colour(col, c_black, 0.6), merge_colour(col, c_black, 0.6), false);
+        draw_rectangle_colour(cx + 1, cy + 1, cx + _cs - 1, cy + _cs - 1, col, col, merge_colour(col, p.shade, 0.45), merge_colour(col, p.shade, 0.45), false);
         draw_set_alpha(1);
     }
 
@@ -392,19 +394,22 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     for (var c = 0; c < array_length(f.cells); c++) {
         variable_struct_set(own, string(f.cells[c][0]) + "," + string(f.cells[c][1]), true);
     }
+    // One dark keyline plate under every colour fill, exactly how the atlas is
+    // printed. Tinting the keyline per-facility instead just makes mud.
+    var keyl = p.atlas_ink;
     draw_set_alpha(pulse);
     for (var c = 0; c < array_length(f.cells); c++) {
         var lx = f.cells[c][0], ly = f.cells[c][1];
         var cx = _px + (f.ox + lx) * _cs;
         var cy = _py + (f.oy + ly) * _cs;
         if (!variable_struct_exists(own, string(lx) + "," + string(ly - 1)))
-            draw_line_width_colour(cx, cy, cx + _cs, cy, 2, col, col);
+            draw_line_width_colour(cx, cy, cx + _cs, cy, 2, keyl, keyl);
         if (!variable_struct_exists(own, string(lx) + "," + string(ly + 1)))
-            draw_line_width_colour(cx, cy + _cs, cx + _cs, cy + _cs, 2, col, col);
+            draw_line_width_colour(cx, cy + _cs, cx + _cs, cy + _cs, 2, keyl, keyl);
         if (!variable_struct_exists(own, string(lx - 1) + "," + string(ly)))
-            draw_line_width_colour(cx, cy, cx, cy + _cs, 2, col, col);
+            draw_line_width_colour(cx, cy, cx, cy + _cs, 2, keyl, keyl);
         if (!variable_struct_exists(own, string(lx + 1) + "," + string(ly)))
-            draw_line_width_colour(cx + _cs, cy, cx + _cs, cy + _cs, 2, col, col);
+            draw_line_width_colour(cx + _cs, cy, cx + _cs, cy + _cs, 2, keyl, keyl);
     }
     draw_set_alpha(1);
 
@@ -418,11 +423,21 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
             var cy = _py + (f.oy + f.cells[c][1]) * _cs;
             var ph = _idx * 37 + c * 61;   // de-sync the animation per cell
 
-            draw_set_alpha(0.9 * pulse);
+            // A heavy inset rule in the effect's ink, doubled so it has the
+            // weight of an overprinted warning box.
+            var sdk = merge_colour(scol, p.shade, 0.35);
+            draw_set_alpha(pulse);
             draw_rectangle_colour(cx + 4, cy + 4, cx + _cs - 4, cy + _cs - 4,
-                                  scol, scol, scol, scol, true);
+                                  sdk, sdk, sdk, sdk, true);
+            draw_rectangle_colour(cx + 5, cy + 5, cx + _cs - 5, cy + _cs - 5,
+                                  sdk, sdk, sdk, sdk, true);
             draw_set_alpha(1);
-            draw_set_colour(scol);
+
+            // The cell is already flooded with the effect's ink, so the motif
+            // is knocked out of it in cream — a light mark on a dark plate,
+            // the way a warning symbol is reversed out of a printed panel.
+            var mk = p.lift;
+            draw_set_colour(mk);
 
             switch (st_key) {
                 case "fire":
@@ -430,8 +445,8 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
                     for (var k = 0; k < 3; k++) {
                         var fx = cx + _cs * (0.26 + k * 0.24);
                         var fh = _cs * (0.24 + 0.14 * dsin(current_time * 0.55 + ph + k * 120));
-                        draw_line_width_colour(fx, cy + _cs - 6, fx - _cs * 0.05, cy + _cs - 6 - fh, 2, scol, p.amber);
-                        draw_line_width_colour(fx, cy + _cs - 6, fx + _cs * 0.05, cy + _cs - 6 - fh * 0.7, 2, scol, p.amber);
+                        draw_line_width_colour(fx, cy + _cs - 6, fx - _cs * 0.05, cy + _cs - 6 - fh, 2, mk, mk);
+                        draw_line_width_colour(fx, cy + _cs - 6, fx + _cs * 0.05, cy + _cs - 6 - fh * 0.7, 2, mk, mk);
                     }
                     break;
 
@@ -442,18 +457,18 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
                     for (var k = 1; k <= seg; k++) {
                         var nx2 = cx + 7 + (_cs - 14) * (k / seg);
                         var ny2 = cy + _cs * 0.5 + dsin(current_time * 1.9 + ph + k * 90) * _cs * 0.18;
-                        draw_line_width_colour(ex0, ey0, nx2, ny2, 2, c_white, scol);
+                        draw_line_width_colour(ex0, ey0, nx2, ny2, 2, mk, mk);
                         ex0 = nx2; ey0 = ny2;
                     }
                     break;
 
                 case "oil":
-                    // A slick pooling at the bottom.
-                    draw_set_alpha(0.55);
+                    // A slick pooling at the bottom, dark against the plate.
+                    draw_set_alpha(0.7);
                     draw_rectangle_colour(cx + 5, cy + _cs - 13, cx + _cs - 5, cy + _cs - 5,
-                                          scol, scol, merge_colour(scol, c_black, 0.6), merge_colour(scol, c_black, 0.6), false);
+                                          sdk, sdk, sdk, sdk, false);
                     draw_set_alpha(1);
-                    draw_line_width_colour(cx + 6, cy + _cs - 13, cx + _cs - 6, cy + _cs - 13, 2, scol, c_white);
+                    draw_line_width_colour(cx + 6, cy + _cs - 13, cx + _cs - 6, cy + _cs - 13, 2, mk, mk);
                     break;
 
                 case "acid":
@@ -461,7 +476,8 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
                     for (var k = 0; k < 4; k++) {
                         var ax = cx + _cs * (0.2 + k * 0.2);
                         var ay = cy + _cs * 0.72 - abs(dsin(current_time * 0.5 + ph + k * 95)) * _cs * 0.34;
-                        draw_circle_colour(ax, ay, 2.5, scol, merge_colour(scol, c_black, 0.4), false);
+                        draw_circle_colour(ax, ay, 2.5, mk, mk, false);
+                        draw_circle_colour(ax, ay, 2.5, sdk, sdk, true);
                     }
                     break;
             }
@@ -475,7 +491,7 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     var gy = _py + (f.oy + ext[1] * 0.5) * _cs;
     var gs = _cs * 0.30 * min(2, min(ext[0], ext[1]) * 0.85 + 0.35);
     draw_set_alpha(alive ? pulse : 0.4);
-    draw_fac_glyph(d.family, gx, gy, gs, alive ? merge_colour(col, c_white, 0.35) : p.text_mute);
+    draw_fac_glyph(d.family, gx, gy, gs, alive ? merge_colour(col, p.shade, 0.45) : p.text_mute);
     draw_set_alpha(1);
 
     // Tier pips, top-left of the footprint.
@@ -493,7 +509,7 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     if (hp_frac < 1) {
         var hcol = (hp_frac > 0.5) ? p.ok : ((hp_frac > 0.25) ? p.warn : p.danger);
         draw_set_alpha(0.35);
-        draw_rectangle_colour(hx1, hy, hx2, hy + 3, c_black, c_black, c_black, c_black, false);
+        draw_rectangle_colour(hx1, hy, hx2, hy + 3, p.shade, p.shade, p.shade, p.shade, false);
         draw_set_alpha(1);
         if (hp_frac > 0) draw_rectangle_colour(hx1, hy, hx1 + (hx2 - hx1) * hp_frac, hy + 3, hcol, hcol, hcol, hcol, false);
     }
@@ -503,7 +519,7 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
         var cy2 = _py + f.oy * _cs + 1;
         var ccol = (f.charge >= 1) ? p.amber : merge_colour(p.cyan, p.edge, 0.3);
         draw_set_alpha(0.30);
-        draw_rectangle_colour(hx1, cy2, hx2, cy2 + 3, c_black, c_black, c_black, c_black, false);
+        draw_rectangle_colour(hx1, cy2, hx2, cy2 + 3, p.shade, p.shade, p.shade, p.shade, false);
         draw_set_alpha(active ? 1 : 0.35);
         draw_rectangle_colour(hx1, cy2, hx1 + (hx2 - hx1) * clamp(f.charge, 0, 1), cy2 + 3, ccol, ccol, ccol, ccol, false);
         draw_set_alpha(1);
@@ -515,7 +531,7 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
     var by = _py + (f.oy + ext[1]) * _cs - 12;
     for (var i = 0; i < array_length(keys); i++) {
         var kc = status_colour(keys[i]);
-        draw_circle_colour(bx - i * 9, by, 3.5, kc, merge_colour(kc, c_black, 0.5), false);
+        draw_circle_colour(bx - i * 9, by, 3.5, kc, merge_colour(kc, p.shade, 0.4), false);
     }
 
     // Unpowered / wrecked overlays.
@@ -578,7 +594,7 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
         draw_fac_ring(_car, o.selected_fac, _px, _py, _cs, p.cyan, false);
     }
     if (o.hover_fac >= 0 && o.hover_fac < array_length(_car.facs)) {
-        draw_fac_ring(_car, o.hover_fac, _px, _py, _cs, c_white, false);
+        draw_fac_ring(_car, o.hover_fac, _px, _py, _cs, p.text, false);
     }
     if (o.target_fac >= 0 && o.target_fac < array_length(_car.facs)) {
         draw_fac_ring(_car, o.target_fac, _px, _py, _cs, p.magenta, true);
@@ -606,7 +622,7 @@ function draw_fac_ring(_car, _idx, _px, _py, _cs, _col, _dashed) {
         draw_line_width_colour(x2 + 3, y2 + 3, x2 + 3 - t, y2 + 3, 2, _col, _col);
         draw_line_width_colour(x2 + 3, y2 + 3, x2 + 3, y2 + 3 - t, 2, _col, _col);
     } else {
-        draw_neon_rect(x1, y1, x2, y2, _col, 0.9, 2);
+        draw_ink_rect(x1, y1, x2, y2, _col, 0.9, 2);
     }
 }
 

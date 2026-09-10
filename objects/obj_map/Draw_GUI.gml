@@ -4,260 +4,316 @@ var H = display_get_gui_height();
 var r = global.run;
 var m = r.map;
 
-// ---------------------------------------------------------------- the paper
-draw_rectangle_colour(0, 0, W, H, p.paper, p.paper, p.paper_dark, p.paper_dark, false);
+// ---------------------------------------------------------------- the atlas
+// Spr_Map_01_Base is the whole printed page — masthead, stat swatches, border
+// and footer are all baked in at 1920x1080. Everything below is drawn into the
+// blanks it leaves.
+var sx = W / sprite_get_width(Spr_Map_01_Base);
+var sy = H / sprite_get_height(Spr_Map_01_Base);
+draw_sprite_ext(Spr_Map_01_Base, 0, 0, 0, sx, sy, 0, c_white, 1);
 
-// Faint "urban area" patches.
-for (var i = 0; i < array_length(m.blobs); i++) {
-    var b = m.blobs[i];
-    draw_set_alpha(0.16);
-    draw_ellipse_colour(b.px - b.rx, b.py - b.ry, b.px + b.rx, b.py + b.ry,
-                        p.route_ochre, p.paper_dark, false);
-    draw_set_alpha(1);
+// ---------------------------------------------------------------- hazards
+// Bad country, shaded onto the page before the roads go down — the way an
+// atlas prints marsh or scree under the network rather than over it. The
+// outline is sampled from the same radius function that decides which stops
+// are inside, so what you see is exactly what bites.
+if (variable_struct_exists(m, "hazards")) {
+    // The printed page area. A region may run past it — there are no stops out
+    // there, so trimming the drawing to the border changes nothing about what
+    // is affected, and reads as the weather carrying on off the edge.
+    var PX0 = 24, PX1 = 1256, PY0 = 122, PY1 = 686;
+
+    for (var hi = 0; hi < array_length(m.hazards); hi++) {
+        var reg  = m.hazards[hi];
+        var hcol = hazard_colour(reg.id);
+        var pts  = hazard_region_points(reg, 40);
+
+        // Trim the outline to the page.
+        for (var k = 0; k < array_length(pts); k++) {
+            pts[k] = [clamp(pts[k][0], PX0, PX1), clamp(pts[k][1], PY0, PY1)];
+        }
+
+        // Wash. The alpha has to ride on the vertices — draw_set_alpha does not
+        // reach a primitive built from draw_vertex_colour.
+        draw_primitive_begin(pr_trianglefan);
+        draw_vertex_colour(clamp(reg.cx, PX0, PX1), clamp(reg.cy, PY0, PY1), hcol, 0.17);
+        for (var k = 0; k <= array_length(pts); k++) {
+            var pt = pts[k mod array_length(pts)];
+            draw_vertex_colour(pt[0], pt[1], hcol, 0.17);
+        }
+        draw_primitive_end();
+
+        // Hatching, on a diagonal grid clipped to the same shape.
+        draw_set_alpha(0.34);
+        var step = 15;
+        for (var gy2 = reg.cy - reg.base * 1.5; gy2 < reg.cy + reg.base * 1.5; gy2 += step) {
+            if (gy2 < PY0 || gy2 > PY1) continue;
+            var row = floor((gy2 - reg.cy) / step);
+            for (var gx2 = reg.cx - reg.base * 1.5 + (row mod 2) * step * 0.5;
+                 gx2 < reg.cx + reg.base * 1.5; gx2 += step) {
+                if (gx2 < PX0 || gx2 > PX1) continue;
+                if (!hazard_region_contains(reg, gx2, gy2)) continue;
+                draw_line_width_colour(gx2 - 4, gy2 + 4, gx2 + 4, gy2 - 4, 1, hcol, hcol);
+            }
+        }
+
+        // Edge: a heavier boundary so the region reads as a mapped area.
+        draw_set_alpha(0.70);
+        for (var k = 0; k < array_length(pts); k++) {
+            var a1 = pts[k], b1 = pts[(k + 1) mod array_length(pts)];
+            draw_line_width_colour(a1[0], a1[1], b1[0], b1[1], 2, hcol, hcol);
+        }
+        draw_set_alpha(1);
+
+        // Name it along the top edge of the blob, kept on the page.
+        var lab_y = clamp(reg.cy - hazard_region_radius(reg, 90) - 13, PY0 + 4, PY1 - 16);
+        draw_map_label(clamp(reg.cx, PX0 + 60, PX1 - 60), lab_y, hazard(reg.id).name, hcol);
+    }
 }
-
-// Survey grid.
-draw_set_alpha(0.14);
-for (var gx2 = 60; gx2 < W; gx2 += 96) draw_line_colour(gx2, 96, gx2, H - 78, p.paper_faint, p.paper_faint);
-for (var gy2 = 120; gy2 < H - 78; gy2 += 92) draw_line_colour(40, gy2, W - 40, gy2, p.paper_faint, p.paper_faint);
-draw_set_alpha(1);
-
-// County boundaries.
-draw_set_alpha(0.35);
-draw_dashed_line(40, 232, W - 40, 258, p.paper_faint, 9, 7, 1);
-draw_dashed_line(560, 96, 606, H - 78, p.paper_faint, 9, 7, 1);
-draw_set_alpha(1);
-
-// Coffee rings, because it's a real atlas that lives in a real cab.
-for (var i = 0; i < array_length(m.stains); i++) {
-    var s = m.stains[i];
-    draw_set_alpha(0.13);
-    draw_circle_colour(s.px, s.py, s.r, p.route_ochre, p.route_ochre, true);
-    draw_circle_colour(s.px, s.py, s.r - 2, p.route_ochre, p.route_ochre, true);
-    draw_set_alpha(0.05);
-    draw_circle_colour(s.px, s.py, s.r, p.route_ochre, p.paper, false);
-    draw_set_alpha(1);
-}
-
-// Fold crease.
-draw_set_alpha(0.20);
-draw_line_width_colour(m.crease, 96, m.crease - 14, H - 78, 3, p.paper_faint, p.paper_faint);
-draw_set_alpha(0.10);
-draw_line_width_colour(m.crease + 4, 96, m.crease - 10, H - 78, 8, p.paper_dark, p.paper_dark);
-draw_set_alpha(1);
 
 // ---------------------------------------------------------------- roads
+// Ink lines on printed paper: a dark casing with a lighter core, and the roads
+// leading out of where you're parked picked out in red.
 for (var i = 0; i < array_length(m.edges); i++) {
     var e = m.edges[i];
     var a = m.nodes[e.a], b2 = m.nodes[e.b];
     var mxp = (a.px + b2.px) * 0.5 + e.ox;
     var myp = (a.py + b2.py) * 0.5 + e.oy;
 
-    // Roads are two-way, so either end being your current town lights it up.
     var live = (r.node == e.a || r.node == e.b);
-    var col  = live ? p.route_red : p.route_blue;
-    var casing = merge_colour(col, c_black, 0.45);
+    var col  = live ? p.atlas_live : p.atlas_road;
 
-    // A two-segment polyline through the bend point reads as a real road.
-    draw_line_width_colour(a.px, a.py, mxp, myp, live ? 8 : 6, casing, casing);
-    draw_line_width_colour(mxp, myp, b2.px, b2.py, live ? 8 : 6, casing, casing);
-    draw_line_width_colour(a.px, a.py, mxp, myp, live ? 5 : 3, col, col);
-    draw_line_width_colour(mxp, myp, b2.px, b2.py, live ? 5 : 3, col, col);
+    draw_set_alpha(live ? 0.75 : 0.30);
+    draw_line_width_colour(a.px, a.py, mxp, myp, live ? 6 : 4, p.atlas_ink, p.atlas_ink);
+    draw_line_width_colour(mxp, myp, b2.px, b2.py, live ? 6 : 4, p.atlas_ink, p.atlas_ink);
+    draw_set_alpha(live ? 1 : 0.75);
+    draw_line_width_colour(a.px, a.py, mxp, myp, live ? 3 : 2, col, col);
+    draw_line_width_colour(mxp, myp, b2.px, b2.py, live ? 3 : 2, col, col);
+    draw_set_alpha(1);
 }
 
-// ---------------------------------------------------------------- repo line
-var cvx = map_convoy_x();
-if (cvx > 20) {
+// ---------------------------------------------------------------- dead-line
+// The schedule, drawn onto the page as a rule sweeping left to right. Behind
+// it is time you no longer have: hatched out, and struck off the timetable.
+var cvx = map_deadline_x();
+if (cvx > MAP_X0 - 40) {
+    var top = 176, bot = 648;
     draw_set_alpha(0.16);
-    draw_rectangle_colour(0, 96, cvx, H - 78, p.convoy, p.convoy, p.convoy, p.convoy, false);
+    draw_rectangle_colour(30, top, cvx, bot, p.atlas_alert, p.atlas_alert,
+                                             p.atlas_alert, p.atlas_alert, false);
     draw_set_alpha(0.30);
-    for (var hy = 96; hy < H - 78; hy += 14) {
-        draw_line_width_colour(max(0, cvx - 60), hy, cvx, hy - 30, 2, p.convoy, p.convoy);
+    for (var hy = top; hy < bot; hy += 15) {
+        draw_line_width_colour(max(30, cvx - 55), hy, cvx, hy - 28, 2, p.atlas_alert, p.atlas_alert);
     }
     draw_set_alpha(1);
 
-    var wob = dsin(t * 90) * 3;
-    draw_line_width_colour(cvx + wob, 96, cvx - wob, H - 78, 4, p.convoy, p.convoy);
-    draw_label(cvx - 8, 104, "REPOSSESSION LINE", p.convoy, fa_right, fa_top, fnt_small);
+    // The rule itself, ticked off like a timetable margin — every tick an hour
+    // of the delivery window already spent.
+    var wob = dsin(t * 90) * 2;
+    draw_line_width_colour(cvx + wob, top, cvx - wob, bot, 4, p.atlas_alert, p.atlas_alert);
+    for (var ty = top + 10; ty < bot; ty += 26) {
+        var tw2 = ((ty - top) div 26) mod 4 == 0 ? 11 : 6;
+        draw_line_width_colour(cvx, ty, cvx - tw2, ty, 2, p.atlas_alert, p.atlas_alert);
+    }
+
+    draw_label(cvx - 16, top + 6, "THE DEAD-LINE", p.atlas_alert, fa_right, fa_top, fnt_small);
+    draw_label(cvx - 16, top + 20, "BEHIND SCHEDULE", p.atlas_alert, fa_right, fa_top, fnt_small);
 }
 
 // ---------------------------------------------------------------- nodes
+var ICON = 46;   // on-screen badge size; the art is 68px square
+
 for (var i = 0; i < array_length(m.nodes); i++) {
     var n = m.nodes[i];
-    var here     = (i == r.node);
-    var reach    = map_is_reachable(i) && !here;
-    var lost     = map_node_lost(i) && !here;
-    var done     = n.resolved && !here;
-    var known    = n.visited || reach || car_has_sensors(r.car);
+    var here  = (i == r.node);
+    var reach = map_is_reachable(i) && !here;
+    var lost  = map_node_lost(i) && !here;
+    // A truck stop you've used isn't spent — it's a shop, and it's still open.
+    // It only earns the "done" tick once you've cleared its shelves.
+    var bare  = (n.kind == "shop") && is_array(n.stock) && (array_length(n.stock) == 0);
+    var done  = !here && (bare || (n.resolved && n.kind != "shop"));
+    var known = n.visited || reach || car_has_sensors(r.car);
 
-    var ink = p.paper_ink;
-    var accent = p.route_blue;
-    if (n.kind == "fight") accent = p.convoy;
-    if (n.kind == "shop")  accent = make_colour_rgb(28, 120, 82);
-    if (n.kind == "fuel")  accent = p.route_ochre;
-    if (n.kind == "exit")  accent = make_colour_rgb(60, 60, 60);
-    // Somewhere you've already been reads as spent, so the eye goes to what's new.
-    if (done && n.kind != "exit") accent = p.paper_faint;
-
-    var rad = here ? 19 : 15;
-
-    // Reachable nodes with something left in them pulse, so the next real
-    // choice is obvious even on a busy graph you can cross in any direction.
-    if (reach && !lost && !done) {
-        var pulse = 0.35 + 0.25 * dsin(t * 150);
-        draw_set_alpha(pulse);
-        draw_circle_colour(n.px, n.py, rad + 9, p.route_red, p.paper, false);
+    // A stop inside a region gets a ring in the hazard's ink. The shaded area
+    // already says where the weather is; this says, without ambiguity at the
+    // boundary, that this particular stop is in it.
+    if (n.hazard != "" && known) {
+        var hcol = hazard_colour(n.hazard);
+        draw_set_alpha(0.85 * a);
+        draw_circle_colour(n.px, n.py, ICON * 0.60, hcol, hcol, true);
+        draw_circle_colour(n.px, n.py, ICON * 0.63, hcol, hcol, true);
         draw_set_alpha(1);
     }
 
-    // Route-shield plate.
-    draw_set_alpha(lost ? 0.32 : 1);
-    draw_circle_colour(n.px, n.py, rad + 2, ink, ink, false);
-    draw_circle_colour(n.px, n.py, rad, p.paper, p.paper, false);
-    draw_circle_colour(n.px, n.py, rad, ink, ink, true);
-
-    // Icon.
-    draw_set_colour(known ? accent : p.paper_faint);
-    if (!known) {
-        draw_label(n.px, n.py, "?", p.paper_faint, fa_center, fa_middle, fnt_term_big);
-    } else {
-        switch (n.kind) {
-            case "fight":
-                // Crossed slash — a hazard marker.
-                draw_line_width_colour(n.px - 7, n.py - 7, n.px + 7, n.py + 7, 3, accent, accent);
-                draw_line_width_colour(n.px + 7, n.py - 7, n.px - 7, n.py + 7, 3, accent, accent);
-                break;
-            case "shop":
-                draw_rectangle_colour(n.px - 7, n.py - 6, n.px + 7, n.py + 7, accent, accent, accent, accent, true);
-                draw_line_width_colour(n.px - 7, n.py - 2, n.px + 7, n.py - 2, 2, accent, accent);
-                break;
-            case "fuel":
-                draw_line_width_colour(n.px, n.py - 8, n.px - 6, n.py + 3, 2, accent, accent);
-                draw_line_width_colour(n.px, n.py - 8, n.px + 6, n.py + 3, 2, accent, accent);
-                draw_circle_colour(n.px, n.py + 3, 5, accent, accent, true);
-                break;
-            case "event":
-                draw_label(n.px, n.py - 1, "?", accent, fa_center, fa_middle, fnt_term_big);
-                break;
-            case "exit":
-                draw_line_width_colour(n.px - 6, n.py - 7, n.px + 5, n.py, 3, accent, accent);
-                draw_line_width_colour(n.px + 5, n.py, n.px - 6, n.py + 7, 3, accent, accent);
-                break;
-            default:
-                draw_circle_colour(n.px, n.py, 5, ink, ink, false);
-                break;
-        }
+    // "You could go here" ring, pulsing, behind the badge.
+    if (reach && !lost && !done) {
+        var pu = 0.55 + 0.35 * dsin(t * 150);
+        var rs = ICON * 1.5 * (1 + 0.04 * dsin(t * 150));
+        draw_sprite_ext(Spr_Icon_Map_Option_Here, 0, n.px, n.py,
+                        rs / sprite_get_width(Spr_Icon_Map_Option_Here),
+                        rs / sprite_get_height(Spr_Icon_Map_Option_Here),
+                        0, c_white, pu);
     }
-    draw_set_alpha(1);
 
-    // Route label under the shield.
+    var spr = map_node_sprite(n, known);
+    // Faint but still legible — the strike-through has to read as crossing an
+    // icon, not floating on its own.
+    var a   = lost ? 0.5 : (done ? 0.62 : 1);
+    var tint = lost ? make_colour_rgb(170, 160, 152) : c_white;
+
+    if (spr != -1) {
+        draw_sprite_ext(spr, 0, n.px, n.py,
+                        ICON / sprite_get_width(spr), ICON / sprite_get_height(spr),
+                        0, tint, a);
+    } else {
+        // The on-ramp and the staging yard have no art in the set, so they're
+        // built to match it: same dark rim, same warm face, same mid-brown
+        // glyph weight as the printed badges beside them.
+        var rr = ICON * 0.5;
+        draw_set_alpha(a);
+        draw_circle_colour(n.px, n.py, rr,        p.badge_rim,  p.badge_rim,  false);
+        draw_circle_colour(n.px, n.py, rr * 0.79, p.badge_face, p.badge_face, false);
+        draw_set_colour(p.badge_glyph);
+
+        if (n.kind == "exit") {
+            // Chevrons peeling off the page — a slip road.
+            for (var k = -1; k <= 1; k++) {
+                var kx = n.px - 8 + k * 8;
+                draw_line_width(kx, n.py - 8, kx + 6, n.py,     4);
+                draw_line_width(kx + 6, n.py, kx,     n.py + 8, 4);
+            }
+        } else {
+            // The yard: a depot ring with a pin in it.
+            draw_circle(n.px, n.py, rr * 0.46, true);
+            draw_circle(n.px, n.py, rr * 0.46, true);
+            draw_circle(n.px, n.py, rr * 0.17, false);
+        }
+
+        draw_set_alpha(1);
+        draw_set_colour(c_white);
+    }
+
+    // Where you're parked.
+    if (here) {
+        var hs = ICON * 1.95;
+        draw_sprite_ext(Spr_Icon_Map_You_are_Here, 0, n.px, n.py,
+                        hs / sprite_get_width(Spr_Icon_Map_You_are_Here),
+                        hs / sprite_get_height(Spr_Icon_Map_You_are_Here),
+                        0, c_white, 1);
+    }
+
+    // Label under the badge.
     if (known) {
-        draw_label(n.px, n.py + rad + 4, map_node_title(n),
-                   lost ? p.paper_faint : ink, fa_center, fa_top, fnt_small);
+        draw_map_label(n.px, n.py + ICON * 0.66, map_node_title(n),
+                       lost ? p.atlas_dim : p.atlas_ink);
     }
 
     if (lost) {
-        draw_line_width_colour(n.px - rad, n.py, n.px + rad, n.py, 2, p.convoy, p.convoy);
+        draw_line_width_colour(n.px - ICON * 0.5, n.py, n.px + ICON * 0.5, n.py,
+                               3, p.atlas_alert, p.atlas_alert);
     } else if (done) {
-        // Small tick: been here, done it.
-        draw_line_width_colour(n.px + rad - 4, n.py - rad + 1, n.px + rad + 2, n.py - rad + 7, 2, ink, ink);
-        draw_line_width_colour(n.px + rad + 2, n.py - rad + 7, n.px + rad + 11, n.py - rad - 5, 2, ink, ink);
-    }
-
-    // You are here — a small rig parked on the node.
-    if (here) {
-        draw_circle_colour(n.px, n.py, rad + 6, p.route_red, p.route_red, true);
-
-        // Your rig, parked above the town — overhead, like everything else.
-        var bob = dsin(t * 200) * 1.5;
-        var cy2 = n.py - rad - 16 + bob;
-        for (var s = -1; s <= 1; s += 2) {
-            for (var w2 = -1; w2 <= 1; w2 += 2) {
-                draw_rectangle_colour(n.px + w2 * 7 - 3, cy2 + s * 7 - 2,
-                                      n.px + w2 * 7 + 3, cy2 + s * 7 + 2,
-                                      p.paper_ink, p.paper_ink, p.paper_ink, p.paper_ink, false);
-            }
-        }
-        draw_rectangle_colour(n.px - 11, cy2 - 6, n.px + 8, cy2 + 6,
-                              p.route_red, p.route_red, p.convoy, p.convoy, false);
-        draw_triangle_colour(n.px + 8, cy2 - 6, n.px + 13, cy2 - 3,
-                             n.px + 13, cy2 + 3, p.route_red, p.convoy, p.convoy, false);
-        draw_triangle_colour(n.px + 8, cy2 - 6, n.px + 8, cy2 + 6,
-                             n.px + 13, cy2 + 3, p.route_red, p.route_red, p.convoy, false);
-        draw_line_width_colour(n.px + 4, cy2 - 5, n.px + 4, cy2 + 5, 2, p.paper_ink, p.paper_ink);
+        draw_line_width_colour(n.px + 12, n.py - 15, n.px + 17, n.py - 10, 3, p.atlas_ink, p.atlas_ink);
+        draw_line_width_colour(n.px + 17, n.py - 10, n.px + 25, n.py - 22, 3, p.atlas_ink, p.atlas_ink);
     }
 }
 
-// Hover readout.
+// ---------------------------------------------------------------- readout
 if (hover_node != -1 && ev == undefined) {
     var hn = m.nodes[hover_node];
     var can = map_can_travel(hover_node) && hover_node != r.node;
+
     var txt = map_node_title(hn);
     if (hover_node == r.node)               txt = "YOU ARE HERE";
     else if (!map_is_reachable(hover_node)) txt = "NO ROAD FROM HERE";
-    else if (map_node_lost(hover_node))     txt = "CUT OFF — the repo line has it";
+    else if (map_node_lost(hover_node))     txt = "CUT OFF";
     else {
-        if (hn.resolved) txt += "  —  already done";
-        if (r.fuel <= 0) txt += "  —  NO FUEL: costs 4 hull";
-        else             txt += "  —  1 fuel";
+        if (hn.kind == "shop") {
+            // Say what's left on the shelf rather than "done" — the whole point
+            // of a stop staying open is knowing whether it's worth the fuel.
+            if (is_array(hn.stock)) {
+                txt += (array_length(hn.stock) > 0)
+                     ? "  ·  " + string(array_length(hn.stock)) + " ON THE SHELF"
+                     : "  ·  SOLD OUT, PUMPS OPEN";
+            }
+        } else if (hn.resolved) {
+            txt += "  ·  ALREADY DONE";
+        }
+        var hcost = hazard_fuel_cost(hn);
+        if (r.fuel < hcost) txt += "  ·  NO FUEL: " + string(4 * (hcost - r.fuel)) + " HULL";
+        else                txt += "  ·  " + string(hcost) + " FUEL";
+        if (hn.hazard != "") {
+            txt += "  ·  " + hazard(hn.hazard).name + ": " + hazard_effect_line(hn.hazard);
+        }
     }
 
-    draw_label(hn.px, hn.py - 40, txt, can ? p.route_red : p.paper_faint, fa_center, fa_bottom, fnt_term);
+    draw_set_font(fnt_small);
+    var tw = string_width(txt) + 16;
+    var bx = clamp(hn.px - tw * 0.5, 34, W - tw - 34);
+    var by = hn.py - ICON * 0.62 - 24;
+
+    draw_set_alpha(0.88);
+    draw_roundrect_colour(bx, by, bx + tw, by + 19, p.atlas_cream, p.atlas_cream, false);
+    draw_set_alpha(1);
+    draw_roundrect_colour(bx, by, bx + tw, by + 19, p.atlas_ink, p.atlas_ink, true);
+    draw_label(bx + tw * 0.5, by + 9, txt, can ? p.atlas_live : p.atlas_dim, fa_center, fa_middle, fnt_small);
 }
 
-// ---------------------------------------------------------------- header
-draw_set_alpha(0.92);
-draw_rectangle_colour(0, 0, W, 88, p.paper, p.paper, p.paper_dark, p.paper_dark, false);
-draw_set_alpha(1);
-draw_line_width_colour(0, 88, W, 88, 2, p.paper_ink, p.paper_ink);
+// ---------------------------------------------------------------- swatches
+// The four coloured boxes at the top of the printed page are blanks; the value
+// goes in the lower half of each, under the baked label.
+var swatch_y = 74;
+var swatch_x = [484, 608, 733, 934];
+var vals = [string(r.scrap),
+            string(r.fuel),
+            string(ceil(r.car.hull)) + "/" + string(r.car.hull_max),
+            string(car_drones(r.car))];
 
-draw_label(24, 12, "SECTOR " + string(r.sector) + " OF " + string(SECTOR_COUNT)
-         + " — " + sector_name(r.sector), p.paper_ink, fa_left, fa_top, fnt_term_big);
-draw_label(24, 40, "STATE ROAD ATLAS  ·  REVISED EDITION  ·  ROUTES SUBJECT TO SEIZURE",
-           p.paper_faint, fa_left, fa_top, fnt_small);
-
-// Resources, as a paper ledger strip.
-var rx = 690;
-var res = [
-    ["SCRAP", string(r.scrap),                                              p.route_ochre],
-    ["FUEL",  string(r.fuel),                                               p.route_blue],
-    ["HULL",  string(ceil(r.car.hull)) + "/" + string(r.car.hull_max),      p.convoy],
-    ["DRONES", string(car_drones(r.car)),                                   make_colour_rgb(28, 120, 82)],
-];
-for (var i = 0; i < array_length(res); i++) {
-    var cx2 = rx + i * 148;
-    draw_label(cx2, 16, res[i][0], p.paper_faint, fa_left, fa_top, fnt_small);
-    draw_label(cx2, 32, res[i][1], res[i][2], fa_left, fa_top, fnt_term_big);
+for (var i = 0; i < 4; i++) {
+    draw_label(swatch_x[i], swatch_y, vals[i], p.atlas_ink, fa_center, fa_middle, fnt_term_big);
 }
 if (r.fuel <= 0) {
-    draw_label(rx + 148, 62, "DRY — hops cost hull", p.convoy, fa_left, fa_top, fnt_small);
+    draw_label(swatch_x[1], swatch_y + 22, "DRY", p.atlas_alert, fa_center, fa_middle, fnt_small);
 }
 
-// ---------------------------------------------------------------- footer
-draw_set_alpha(0.92);
-draw_rectangle_colour(0, H - 74, W, H, p.paper_dark, p.paper_dark, p.paper, p.paper, false);
-draw_set_alpha(1);
-draw_line_width_colour(0, H - 74, W, H - 74, 2, p.paper_ink, p.paper_ink);
-
-draw_label(24, H - 66, "LOG", p.paper_faint, fa_left, fa_top, fnt_small);
-var start = max(0, array_length(r.log) - 3);
-for (var i = start; i < array_length(r.log); i++) {
-    draw_label(64, H - 66 + (i - start) * 17, r.log[i], p.paper_ink, fa_left, fa_top, fnt_small);
+// The masthead banner is printed reading "SECTOR 1 OF 3"; patch it when the
+// run has moved on, in the banner's own colour so it reads as printed.
+if (r.sector != 1) {
+    draw_rectangle_colour(26, 74, 396, 100,
+        make_colour_rgb(232, 106, 74), make_colour_rgb(236, 118, 78),
+        make_colour_rgb(226,  96, 66), make_colour_rgb(230, 108, 72), false);
+    draw_label(40, 87, "SECTOR " + string(r.sector) + " OF " + string(SECTOR_COUNT),
+               make_colour_rgb(58, 30, 22), fa_left, fa_middle, fnt_term);
 }
 
-draw_label(W - 24, H - 66, "Click any connected town — roads run both ways.", p.paper_ink, fa_right, fa_top, fnt_small);
-draw_label(W - 24, H - 48, "The repo line advances every hop, and takes what it passes.",
-           p.paper_faint, fa_right, fa_top, fnt_small);
-draw_label(W - 24, H - 30, "Sector exit is the on-ramp on the far right.",
-           p.paper_faint, fa_right, fa_top, fnt_small);
+// Sector name and the latest log line live inside the printed border, top-left
+// and bottom-left — the swatch row above has no free space.
+draw_map_label(42, 128, string_upper(sector_name(r.sector)), p.atlas_ink, fa_left);
+if (array_length(r.log) > 0) {
+    draw_map_label(42, 654, r.log[array_length(r.log) - 1], p.atlas_road, fa_left);
+}
+
+// ------------------------------------------------------------- the rig
+// Sits in the clear band between the masthead and the top row of stops, so
+// it's reachable from anywhere on the atlas without covering a road.
+if (ev == undefined) {
+    draw_set_font(fnt_small);
+    var rbx1 = 1004, rby1 = 126, rbx2 = 1248, rby2 = 162;
+    if (ui_button(rbx1, rby1, rbx2, rby2, "RE-PACK THE RIG   (G)", true, p.atlas_live, fnt_small)) {
+        garage_open(false, true);
+    }
+    if (ui_hover(rbx1, rby1, rbx2, rby2)) {
+        ui_tooltip("THE RIG", "Move facilities around the chassis. You can do this anywhere on the atlas — it costs nothing and takes no time.");
+    }
+}
 
 // ---------------------------------------------------------------- event
 if (ev != undefined) {
-    draw_set_alpha(0.68);
-    draw_rectangle_colour(0, 0, W, H, c_black, c_black, c_black, c_black, false);
+    // A warm wash rather than a black scrim — the page is still paper, just
+    // in shadow while you read the card on top of it.
+    draw_set_alpha(0.62);
+    draw_rectangle_colour(0, 0, W, H, p.shade, p.shade, p.shade, p.shade, false);
     draw_set_alpha(1);
 
-    // Size the panel to its contents rather than leaving a slab of dead space.
     var ex1 = 268, ex2 = 1012;
     var inner = ex2 - ex1 - 52;
 
