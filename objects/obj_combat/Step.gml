@@ -13,6 +13,12 @@ combat_shake_decay(dt());
 
 if (cb.over == "" && !cb.paused) combat_update(dt());
 else if (cb.over != "") cb.over_t += dt();
+if (cb.over == "" && !cb.paused) {
+    combat_update(dt());
+    // Stepped by hand, so effects and particles freeze with the fight on pause.
+    vfx_update(dt());
+    vfx_ambient(dt());
+} else if (cb.over != "") cb.over_t += dt();
 
 // ---------------------------------------------------------------- hover
 hover_car = -2;

@@ -1,0 +1,45 @@
+#:schema ../../../.gm-schema/v1.json#emitter
+
+shape = "line"
+distribution = "gaussian"
+sprite = "Spr_Fire"
+sprite_stretch = false
+texture = -1
+additive_blend = true
+emit_count = 18.0
+scale_x = 1.7
+
+[region]
+y = 2.0
+w = 1.0
+h = 19.746643
+
+[speed]
+min = 6.0
+max = 6.0
+
+[direction]
+max = 360.0
+
+[gravity]
+direction = 270.0
+
+[lifetime]
+min = 5.0
+max = 10.0
+
+[size]
+min = 0.01999998
+max = 0.2
+increase = 0.007
+
+[orientation]
+min = 29.0
+max = 353.0
+wiggle = 0.05
+relative = true
+
+[colours]
+start = "#FFF8B5"
+mid = "#FF9D00"
+end = "#4F0707"

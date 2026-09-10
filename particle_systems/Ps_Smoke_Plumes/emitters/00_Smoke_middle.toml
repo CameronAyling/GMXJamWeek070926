@@ -1,0 +1,46 @@
+#:schema ../../../.gm-schema/v1.json#emitter
+
+shape = "ellipse"
+sprite = "Spr_Fire_2_1"
+texture = -1
+emit_count = 2.0
+scale_x = 0.9
+scale_y = 0.9
+
+[region]
+x = -5.0
+y = -1.0
+w = 11.249512
+h = 58.780334
+
+[speed]
+min = 0.2
+max = 0.5
+increase = -0.009
+
+[direction]
+min = 270.0
+max = 270.0
+wiggle = -9.0
+
+[gravity]
+direction = 270.0
+force = 0.08
+
+[lifetime]
+min = 50.0
+max = 75.0
+
+[size]
+min = 0.05
+max = 0.3
+
+[orientation]
+max = 180.0
+increase = 1.8
+
+[colours]
+start = "#4D4D4D"
+mid = "#343434"
+end = "#1A1A1A"
+

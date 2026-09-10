@@ -1,0 +1,4 @@
+#:schema ../../.gm-schema/v1.json#sprite
+
+fps = 25.0
+origin = "centre"

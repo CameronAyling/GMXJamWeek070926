@@ -52,6 +52,43 @@ if (cb.shake > 0) {
 
 // The tarmac band, its violet edge rules and the scrolling lane dashes used to
 // live here. The scrolling desert above does that job now.
+// ---------------------------------------------------------------- the road
+// Scrolling tarmac under both rigs so the fight reads as happening at speed.
+// Printed as a road is on the atlas: a band of tarmac laid on the paper with
+// a dark casing either side and cream dashes running down it.
+var road_y0 = 108, road_y1 = 556;
+// Kept pale: on a map the carriageway is a fill a shade off the paper, not a
+// dark slab. Anything heavier and the rigs stop reading as ink on a page.
+var tar_hi = merge_colour(p.bg, p.shade, 0.15);
+var tar_lo = merge_colour(p.bg, p.shade, 0.24);
+draw_rectangle_colour(0, road_y0, W, road_y1, tar_hi, tar_hi, tar_lo, tar_lo, false);
+
+// Hard shoulder hatching along both kerbs.
+draw_set_alpha(0.20);
+for (var hx = -24; hx < W + 24; hx += 16) {
+    draw_line_width_colour(hx, road_y0 + 13, hx + 10, road_y0 + 1, 2, p.atlas_ink, p.atlas_ink);
+    draw_line_width_colour(hx, road_y1 - 1,  hx + 10, road_y1 - 13, 2, p.atlas_ink, p.atlas_ink);
+}
+draw_set_alpha(1);
+
+var scroll = (cb.paused || cb.over != "") ? 0 : cb.time;
+draw_set_alpha(0.55);
+for (var i = 0; i < 7; i++) {
+    var ly = road_y0 + 34 + i * 68;
+    var off = frac(scroll * (0.35 + i * 0.05)) * 190;
+    for (var dx = -190; dx < W + 190; dx += 190) {
+        draw_line_width_colour(dx + off, ly, dx + off + 84, ly, 3, p.atlas_cream, p.atlas_cream);
+    }
+}
+draw_set_alpha(1);
+
+// Kerb lines: heavy ink casing, the way a road is drawn on the map.
+draw_line_width_colour(0, road_y0, W, road_y0, 3, p.atlas_ink, p.atlas_ink);
+draw_line_width_colour(0, road_y1, W, road_y1, 3, p.atlas_ink, p.atlas_ink);
+draw_set_alpha(0.5);
+draw_line_width_colour(0, road_y0 + 3, W, road_y0 + 3, 1, p.atlas_cream, p.atlas_cream);
+draw_line_width_colour(0, road_y1 - 3, W, road_y1 - 3, 1, p.atlas_cream, p.atlas_cream);
+draw_set_alpha(1);
 
 // ---------------------------------------------------------------- cars
 // Player.
@@ -249,6 +286,10 @@ for (var i = 0; i < array_length(cb.shots); i++) {
         if (s.family == "oil") draw_circle_colour(cx, cy, 5, p.st_oil, p.violet, false);
     }
 }
+
+// ---------------------------------------------------------------- vfx
+// Above the rigs and their tracers, below the damage numbers and the HUD.
+vfx_draw();
 
 // ---------------------------------------------------------------- pops
 // A damage number rises out of the facility it happened to. Left alone it will

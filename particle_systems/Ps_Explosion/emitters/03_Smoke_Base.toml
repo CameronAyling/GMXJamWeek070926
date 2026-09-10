@@ -1,0 +1,41 @@
+#:schema ../../../.gm-schema/v1.json#emitter
+
+shape = "ellipse"
+texture = 10
+emit_count = 6.0
+scale_x = 0.8
+scale_y = 2.1
+
+[region]
+x = -1.0
+w = 37.78534
+h = 18.90097
+
+[speed]
+increase = -0.1
+
+[direction]
+max = 360.0
+
+[gravity]
+direction = 90.0
+force = 0.1
+
+[lifetime]
+min = 5.0
+max = 20.0
+
+[size]
+min = 1.5
+max = 2.0
+increase = 0.08
+
+[orientation]
+min = 30.0
+max = 460.0
+relative = true
+
+[colours]
+start = "#262128"
+mid = "#241F26"
+end = "#413E42"

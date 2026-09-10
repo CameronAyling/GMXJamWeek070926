@@ -1,0 +1,40 @@
+#:schema ../../../.gm-schema/v1.json#emitter
+
+texture = 8
+additive_blend = true
+emit_count = 8.0
+scale_x = 5.4
+
+[region]
+y = -1.0
+w = 1.0
+h = 1.0
+
+[speed]
+min = 8.0
+max = 11.0
+increase = -0.9
+
+[direction]
+min = 10.0
+max = 350.0
+
+[gravity]
+direction = 270.0
+
+[lifetime]
+min = 10.0
+max = 15.0
+
+[size]
+min = 0.1
+max = 0.2
+
+[orientation]
+min = 360.0
+relative = true
+
+[colours]
+start = "#FCFF6D"
+mid = "#FF7700"
+end = "#FF5900"

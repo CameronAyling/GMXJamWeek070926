@@ -20,6 +20,8 @@ function combat_init() {
     var ctx = global.combat_ctx;
     var player = global.run.car;
 
+    vfx_init();     // fresh particle system and effect list per fight
+
     // Everything is repaired between fights except hull; statuses never carry.
     for (var i = 0; i < array_length(player.facs); i++) {
         status_clear_all(player.facs[i]);
@@ -280,8 +282,20 @@ function combat_damage(_car_i, _fac_i, _dmg, _hull_bonus, _pierce) {
         hull_dmg += dmg;
     }
 
+    var hull_before = car.hull;
     car.hull = max(0, car.hull - hull_dmg);
     combat_pop(pos[0], pos[1], "-" + string(round(max(dmg, hull_dmg))), global.PAL.danger);
+
+    // The rig going up is the one moment worth a full particle burst.
+    if (hull_before > 0 && car.hull <= 0) {
+        var lay = combat_layout_for(_car_i);
+        var bx = lay.px + car.gw * lay.cs * 0.5;
+        var by = lay.py + car.gh * lay.cs * 0.5;
+        vfx_particles(Ps_Explosion, bx, by);
+        vfx_burst("blast", bx, by, lay.cs, irandom(359));
+        vfx_burst("puff",  bx, by + lay.cs * 0.4, lay.cs * 1.4);
+        global.cb.shake = max(global.cb.shake, 10);
+    }
 
     // A lost reactor can push the rig over its power budget.
     car_enforce_power(car);
@@ -305,6 +319,16 @@ function combat_fire(_src_car_i, _src_fac_i) {
     if (tc < 0 && cb.player.hull <= 0) return;
 
     var from = combat_fac_pos(_src_car_i, _src_fac_i);
+
+    // Muzzle flash. The player gets the full particle burst; enemies get the
+    // cheap spark, which keeps particle volume sane in a four-way firefight.
+    var src_cs = combat_layout_for(_src_car_i).cs;
+    var at  = combat_fac_pos(tc, f.target_fac);
+    // Sprite rotation is anticlockwise, point_direction clockwise — hence -aim.
+    var aim = point_direction(from[0], from[1], at[0], at[1]);
+    vfx_burst("muzzle", from[0], from[1], src_cs, -aim);
+    vfx_burst("gunsmoke", from[0], from[1], src_cs);
+    if (_src_car_i < 0) vfx_particles(Ps_Muzzle_Flash, from[0], from[1]);
 
     for (var s = 0; s < d.shots; s++) {
         var dst_fac = f.target_fac;
@@ -382,6 +406,7 @@ function combat_resolve(_shot) {
         tgt.shield_cur -= 1;
         tgt.shield_timer = 0;
         combat_pop(pos[0], pos[1], "SHIELD", global.PAL.cat_defence);
+        vfx_burst("puff", pos[0], pos[1], combat_layout_for(_shot.dst).cs);
         return;
     }
 
@@ -413,6 +438,9 @@ function combat_resolve(_shot) {
     }
 
     cb.shake = max(cb.shake, (_shot.dst < 0) ? 5 : 2.5);
+
+    vfx_burst(vfx_for_family(_shot.family), pos[0], pos[1],
+              combat_layout_for(_shot.dst).cs, irandom(359));
 }
 
 // --- per-frame simulation ---------------------------------------------------

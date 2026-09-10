@@ -1,0 +1,37 @@
+#:schema ../../../.gm-schema/v1.json#emitter
+
+sprite = "Spr_Fire_2"
+texture = -1
+additive_blend = true
+emit_count = 6.0
+scale_x = 1.6
+
+[region]
+w = 49.659637
+h = 40.812378
+
+[speed]
+min = 15.0
+max = 15.0
+
+[gravity]
+direction = 270.0
+
+[lifetime]
+min = 60.0
+max = 80.0
+
+[size]
+min = 0.05
+max = 0.1
+increase = -0.03
+
+[orientation]
+max = 350.0
+increase = -2.5
+relative = true
+
+[colours]
+start = "#FFC700"
+mid = "#FF7700"
+end = "#FF5500"

@@ -1,0 +1,32 @@
+#:schema ../../../.gm-schema/v1.json#emitter
+
+sprite = "Spr_explosion"
+sprite_animate = true
+texture = -1
+emit_count = 1.0
+
+[region]
+x = -1.0
+w = 7.9678345
+h = 5.2223206
+
+[direction]
+min = 80.0
+max = 100.0
+
+[gravity]
+direction = 270.0
+
+[lifetime]
+min = 40.0
+max = 40.0
+
+[size]
+min = 2.0
+max = 2.0
+
+[colours]
+start = "#FCFFFE"
+mid = "#F2FFFE"
+end = "#F9FDFF"
+

@@ -1,0 +1,43 @@
+#:schema ../../../.gm-schema/v1.json#emitter
+
+shape = "line"
+distribution = "gaussian"
+sprite_stretch = false
+texture = 11
+additive_blend = true
+emit_count = 20.0
+
+[region]
+y = 2.0
+w = 81.49585
+h = 79.30884
+
+[speed]
+min = 7.0
+max = 9.0
+increase = -0.4
+
+[direction]
+max = 360.0
+
+[gravity]
+direction = 270.0
+
+[lifetime]
+min = 40.0
+max = 60.0
+
+[size]
+min = 2.0
+max = 4.0
+increase = -0.35
+
+[orientation]
+min = 29.0
+max = 353.0
+wiggle = 0.05
+
+[colours]
+start = "#FFFD9B"
+mid = "#FF970F"
+end = "#490404"
