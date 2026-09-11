@@ -173,15 +173,36 @@ for (var i = 0; i < array_length(cb.drones); i++) {
         draw_circle_colour(dcx + dcos(sa) * 4, dcy + dsin(sa) * 4, 1.5, dcol, dcol, false);
     }
 
-    // The drone: a lozenge body under a blurred rotor disc.
-    draw_circle_colour(hov_x, hov_y, 8.5, merge_colour(dcol, p.shade, 0.25),
-                                          merge_colour(dcol, p.shade, 0.45), false);
-    draw_circle_colour(hov_x, hov_y, 8.5, p.atlas_ink, p.atlas_ink, true);
-    draw_set_alpha(0.45);
-    var rr2 = 12 + dsin(phase * 300) * 1.6;
-    draw_circle_colour(hov_x, hov_y, rr2, p.lift, p.lift, true);
+    // The drone itself: painted body with a spinning rotor in each housing.
+    // Rotor centres were measured off the art at (+-109, -9.5) from its centre
+    // origin, so they scale with the body rather than needing re-tuning.
+    var dsc  = (lp.cs * DRONE_DRAW_CELLS) / sprite_get_width(Spr_Helper_Drone);
+    var spin = cb.time * DRONE_ROTOR_SPIN;
+
+    // Rotors first, so each housing's rim draws over its own blades. Each is
+    // drawn twice — a solid pass plus a ghost lagging behind it — which is what
+    // sells the blur; a single copy reads as a static disc with a mark on it.
+    for (var s = -1; s <= 1; s += 2) {
+        var rx = hov_x + s * 109 * dsc;
+        var ry = hov_y - 9.5 * dsc;
+        var rs = dsc * 0.85;
+        draw_set_alpha(0.40);
+        draw_sprite_ext(Spr_Helper_Drone_propellor, 0, rx, ry, rs, rs,
+                        (spin - 34) * s, c_white, 1);
+        draw_set_alpha(0.95);
+        draw_sprite_ext(Spr_Helper_Drone_propellor, 0, rx, ry, rs, rs,
+                        spin * s,           // counter-rotating, as a real pair
+                        c_white, 1);
+        draw_set_alpha(1);
+    }
+    draw_sprite_ext(Spr_Helper_Drone, 0, hov_x, hov_y, dsc, dsc, 0, c_white, 1);
+
+    // Tint the body toward what it's doing — orange dousing, green patching.
+    gpu_set_blendmode(bm_add);
+    draw_set_alpha(0.22);
+    draw_sprite_ext(Spr_Helper_Drone, 0, hov_x, hov_y, dsc, dsc, 0, dcol, 1);
     draw_set_alpha(1);
-    draw_circle_colour(hov_x, hov_y, 2.6, p.lift, p.lift, false);
+    gpu_set_blendmode(bm_normal);
 }
 
 // ---------------------------------------------------------------- headers

@@ -11,6 +11,9 @@
 
 #macro DRONE_REPAIR_TIME  1.1    // seconds per hit point repaired
 #macro DRONE_DOUSE_RATE   2.5    // extra fire-duration burned per second
+#macro DRONE_DRAW_CELLS   1.55   // drone body width, in grid cells
+#macro DRONE_ROTOR_SPIN   760    // rotor degrees per second; a 2-blade rotor
+                                 // strobes above roughly 1400 at 60fps
 #macro SHOT_SPEED         620    // pixels per second
 #macro HULL_SPILL         0.34   // fraction of facility damage that reaches hull
 #macro STRAY_CHANCE       0.45   // odds a dodged shot clips an adjacent cell
