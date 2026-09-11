@@ -3,20 +3,35 @@ game_init();
 show_briefing = false;
 t = 0;
 
-// A sample route printed across the bottom of the cover, the way an atlas
-// shows off what's inside. Generated once so it doesn't crawl between frames.
-cover_route = [];
-var rx = 74;
-while (rx < 1250) {
-    array_push(cover_route, { px: rx, py: 566 + irandom_range(-40, 40) });
-    rx += irandom_range(118, 178);
+// The cover is painted art (Spr_BG_Main_Menu) — masthead, route and imprint are
+// all in the image, so this screen only has to lay the buttons on top of it.
+//
+// The keys are drawn 354x86 but the cover is a 1920x1080 painting squeezed into
+// a 1280x720 GUI, so they ride the same 2/3 reduction. That keeps them the size
+// they are against the scenery in the mockup rather than towering over it.
+menu_scale = 2 / 3;
+menu_w     = sprite_get_width(Spr_Button_Main_Menu_New_Run)  * menu_scale;
+menu_h     = sprite_get_height(Spr_Button_Main_Menu_New_Run) * menu_scale;
+menu_x     = 640 - menu_w * 0.5;
+menu_y     = 293;
+menu_gap   = 73;   // top-to-top, so the keys sit a shade apart
+
+// One layout table, read by both Step (hit-testing, keyboard) and Draw, with
+// x2/y2 baked in so the hit rects and the draws can never drift apart.
+menu_items = [];
+var faces = [[Spr_Button_Main_Menu_New_Run,  Spr_Button_Main_Menu_New_Run_Selected],
+             [Spr_Button_Main_Menu_Briefing, Spr_Button_Main_Menu_Briefing_Selected],
+             [Spr_Button_Main_Menu_Quit,     Spr_Button_Main_Menu_Quit_Selected]];
+for (var i = 0; i < array_length(faces); i++) {
+    array_push(menu_items, {
+        spr : faces[i][0],
+        sel : faces[i][1],
+        x1  : menu_x,
+        y1  : menu_y + i * menu_gap,
+        x2  : menu_x + menu_w,
+        y2  : menu_y + i * menu_gap + menu_h,
+    });
 }
 
-// A handful of the route's stops get a real map badge — the same art the
-// atlas screen uses, so the cover promises the thing you actually get.
-cover_badges = [];
-var kinds = [Spr_Icon_Map_Bandits, Spr_Icon_Map_Shop, Spr_Icon_Map_BOTS,
-             Spr_Icon_Map_Unknown, Spr_Icon_Map_Ants, Spr_Icon_Map_CORPORATE_];
-for (var i = 1; i < array_length(cover_route) - 1; i += 2) {
-    array_push(cover_badges, { at: i, spr: kinds[(i div 2) mod array_length(kinds)] });
-}
+// Keyboard focus. Starts on NEW RUN so ENTER still just starts a run.
+menu_sel = 0;

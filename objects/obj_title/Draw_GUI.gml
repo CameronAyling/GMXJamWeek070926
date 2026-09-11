@@ -1,82 +1,42 @@
 var p = global.PAL;
 var W = display_get_gui_width(), H = display_get_gui_height();
-var vpx = W * 0.5;
 
 // ---------------------------------------------------------------- the cover
-// This is the front of the atlas the map screen is a page from: same stock,
-// same banner, same badges.
-draw_backdrop();
-
-// --------------------------------------------------------------- the route
-// A sample route printed across the lower half, ink lines with a lighter core
-// exactly as the atlas draws its roads.
-for (var i = 0; i < array_length(cover_route) - 1; i++) {
-    var a = cover_route[i], b2 = cover_route[i + 1];
-    draw_set_alpha(0.30);
-    draw_line_width_colour(a.px, a.py, b2.px, b2.py, 6, p.atlas_ink, p.atlas_ink);
-    draw_set_alpha(0.80);
-    draw_line_width_colour(a.px, a.py, b2.px, b2.py, 3, p.atlas_live, p.atlas_live);
-    draw_set_alpha(1);
-}
-for (var i = 0; i < array_length(cover_badges); i++) {
-    var bd  = cover_badges[i];
-    var nd  = cover_route[bd.at];
-    var ics = 40;
-    draw_sprite_ext(bd.spr, 0, nd.px, nd.py,
-                    ics / sprite_get_width(bd.spr), ics / sprite_get_height(bd.spr),
-                    0, c_white, 0.92);
-}
-
-// ---------------------------------------------------------------- masthead
-draw_label(vpx, 62, "GENE INCORPORATED  ·  MOTORISTS' ATLAS  ·  47TH EDITION",
-           p.text_dim, fa_center, fa_middle, fnt_small);
-
-draw_glow_text(vpx, 126, "FASTER THAN FUEL", p.atlas_ink, fa_center, fa_middle, fnt_title);
-
-// The orange banner the map screen wears under its masthead.
-var bnx = 268, bny = 172, bnw = 744, bnh = 34;
-draw_rectangle_colour(bnx, bny, bnx + bnw, bny + bnh,
-    make_colour_rgb(232, 106, 74), make_colour_rgb(236, 118, 78),
-    make_colour_rgb(226,  96, 66), make_colour_rgb(230, 108, 72), false);
-draw_set_alpha(0.5);
-draw_rectangle_colour(bnx, bny, bnx + bnw, bny + bnh, p.atlas_ink, p.atlas_ink, p.atlas_ink, p.atlas_ink, true);
-draw_set_alpha(1);
-draw_label(vpx, bny + bnh * 0.5, "A LONG HAUL THROUGH THE CREDITOR STATES",
-           make_colour_rgb(58, 30, 22), fa_center, fa_middle, fnt_term);
-
-// Twin rules under the banner, the map's masthead trick.
-draw_set_alpha(0.55);
-draw_line_width_colour(bnx, bny + bnh + 6, bnx + bnw, bny + bnh + 6, 2, p.atlas_live, p.atlas_live);
-draw_line_width_colour(bnx, bny + bnh + 11, bnx + bnw, bny + bnh + 11, 1, p.atlas_live, p.atlas_live);
-draw_set_alpha(1);
+// The painted cover carries the masthead, the sample route, the imprint and
+// the printed border — everything this screen used to fake with primitives.
+draw_sprite_ext(Spr_BG_Main_Menu, 0, 0, 0,
+                W / sprite_get_width(Spr_BG_Main_Menu),
+                H / sprite_get_height(Spr_BG_Main_Menu),
+                0, c_white, 1);
 
 // ---------------------------------------------------------------- menu
-var bw = 250, bh = 44, bx = vpx - bw * 0.5, by = 250;
+// Three painted keys. The "selected" art is the lit face; BRIEFING also stays
+// lit while its panel is open, so the button reads as a toggle.
+for (var i = 0; i < array_length(menu_items); i++) {
+    var lit = (menu_sel == i) || (i == 1 && show_briefing);
+    var spr = lit ? menu_items[i].sel : menu_items[i].spr;
 
-draw_set_font(fnt_term_big);
-if (ui_button(bx, by, bx + bw, by + bh, "NEW RUN", true, p.cyan)) {
-    run_new();
-    goto_room(rm_garage);
+    draw_set_alpha(0.18);
+    draw_sprite_ext(spr, 0, menu_items[i].x1 + 3, menu_items[i].y1 + 4,
+                    menu_scale, menu_scale, 0, p.shade, 1);
+    draw_set_alpha(1);
+    draw_sprite_ext(spr, 0, menu_items[i].x1, menu_items[i].y1,
+                    menu_scale, menu_scale, 0, c_white, 1);
 }
-draw_set_font(fnt_term);
-if (ui_button(bx, by + 56, bx + bw, by + 56 + bh, show_briefing ? "HIDE BRIEFING" : "BRIEFING", true, p.violet)) {
-    show_briefing = !show_briefing;   //gmx-lint-ignore draw-event-mutation
-}
-if (ui_button(bx, by + 112, bx + bw, by + 112 + bh, "QUIT", true, p.text_dim)) {
-    game_end();
-}
-draw_label(vpx, by + 172, "or press ENTER", p.text_mute, fa_center, fa_middle, fnt_small);
 
 // ---------------------------------------------------------------- briefing
+// Slots into the empty desert below the keys, so the stack stays clickable
+// while it's open and BRIEFING still toggles it shut.
 if (show_briefing) {
-    var px1 = 176, py1 = 418, px2 = 1104, py2 = 664;
+    var px1 = 90, py1 = 508, px2 = 1190, py2 = 712;
     draw_panel(px1, py1, px2, py2, p.violet, 0.95);
 
     draw_set_font(fnt_term_big);
-    draw_label(px1 + 22, py1 + 16, "DRIVER'S BRIEFING", p.cyan);
+    draw_label(px1 + 22, py1 + 12, "DRIVER'S BRIEFING", p.cyan);
+    draw_label(px2 - 22, py1 + 18, "ESC TO CLOSE", p.text_mute, fa_right, fa_top, fnt_small);
 
     draw_set_font(fnt_small);
-    var lx = px1 + 22, ly = py1 + 52, colw = 288;
+    var lx = px1 + 22, ly = py1 + 40, colw = 330;
 
     draw_label(lx, ly, "THE RIG", p.amber);
     ui_text_block(lx, ly + 18,
@@ -97,32 +57,21 @@ if (show_briefing) {
       + "alight. Corporations turtle behind shields on a repossession clock. "
       + "Insects eat armour with acid and heal what you break.", colw, p.text, 14);
 
+    // The bottom band is short, so its heading sits inline with the entries
+    // rather than costing a whole line of its own.
     draw_set_font(fnt_small);
-    var sy = py2 - 46;
-    draw_label(lx, sy, "STATUS EFFECTS", p.amber);
+    var sy = py2 - 40;
+    draw_label(lx, sy + 6, "STATUS EFFECTS", p.amber);
     var eff = [["ELECTRICITY", "elec", "facility offline"],
                ["FIRE", "fire", "burns it down, spreads"],
                ["OIL", "oil", "half speed, and it lights"],
                ["ACID", "acid", "melts armour, amplifies hits"]];
     for (var i = 0; i < 4; i++) {
-        var ex = lx + i * 228;
-        draw_circle_colour(ex + 5, sy + 26, 4, status_colour(eff[i][1]), status_colour(eff[i][1]), false);
-        draw_label(ex + 16, sy + 19, eff[i][0], status_colour(eff[i][1]));
-        draw_label(ex + 16, sy + 31, eff[i][2], p.text_dim);
+        var ex = lx + 128 + i * 228;
+        draw_circle_colour(ex + 5, sy + 7, 4, status_colour(eff[i][1]), status_colour(eff[i][1]), false);
+        draw_label(ex + 16, sy, eff[i][0], status_colour(eff[i][1]));
+        draw_label(ex + 16, sy + 14, eff[i][2], p.text_dim);
     }
 }
-
-// ------------------------------------------------------------ imprint
-// The publisher's roundel, top-right, exactly where the atlas page carries it.
-var gix = 1216, giy = 58, gir = 30;
-draw_circle_colour(gix, giy, gir, p.atlas_live, merge_colour(p.atlas_live, p.shade, 0.3), false);
-draw_set_alpha(0.45);
-draw_circle_colour(gix, giy, gir, p.atlas_ink, p.atlas_ink, true);
-draw_set_alpha(1);
-draw_label(gix, giy, "GI", p.atlas_cream, fa_center, fa_middle, fnt_term_big);
-
-draw_label(30, H - 30, "LEGALLY NOT A MONOPOLY", p.text_mute, fa_left, fa_middle, fnt_small);
-draw_label(W - 30, H - 30, "GENE INCORPORATED  ·  EVERYTHING TOMORROW NEEDS",
-           p.text_dim, fa_right, fa_middle, fnt_small);
 
 ui_draw_tooltip();
