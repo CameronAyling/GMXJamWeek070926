@@ -29,12 +29,26 @@ function car_new(_name, _w, _h, _hull) {
         // vehicle without each one having to remember which sprite to pass.
         // -1 falls back to the procedural cutaway.
         art: -1,
-        art_shadow: -1,
         // Which part of the art the grid sits on, as fractions of the sprite.
         // The postie's cargo roof is the black slab behind the cab: that is the
         // deck, so that is where the facilities go, and the rest of the vehicle
         // (cab, bonnet, wheels) hangs off it.
         art_roof: [0.035, 0.225, 0.385, 0.765],
+        // The sprite was painted nose-left and needs mirroring to join the
+        // traffic. Nothing else about the car changes — the deck stays put.
+        art_flip: false,
+        // Draw the art at the proportions it was painted at, instead of letting
+        // the two axes stretch independently with the chassis.
+        art_uniform: false,
+        // Cap on how wide the art may be drawn, in screen pixels. The cells
+        // shrink to respect it. 0 means no cap — the grid sets the size.
+        art_max_w: 0,
+        // An animated overlay riding on top of the body: the Chitin's wings.
+        // Centred at a fraction of the body sprite's own canvas and scaled
+        // against it, so it tracks every rescale for free.
+        art_wings: -1,
+        art_wings_at: [0.5, 0.5],
+        art_wings_scale: 1,
 
         // enemy flavour
         faction: "",
@@ -487,8 +501,7 @@ function car_attach_trailer(_car) {
 /// and stay able to react.
 function car_new_player() {
     var c = car_new("THE LAST CALL", 3, 3, 36);
-    c.art        = Spr_Car_Postie;
-    c.art_shadow = Spr_Car_Postie_Shadow;
+    c.art = Spr_Car_Postie;
     car_place(c, "reac_1", 0, 0);      // gen 5
     car_place(c, "las_1",  1, 0);      // 1 power
     car_place(c, "drv_1",  2, 0);      // 1 power

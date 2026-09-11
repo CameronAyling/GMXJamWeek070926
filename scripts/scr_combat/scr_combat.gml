@@ -107,8 +107,9 @@ function combat_layout() {
 
     if (n == 1) {
         var e = cb.enemies[0];
-        var cs = (e.gw >= 7) ? 40 : 46;
-        array_push(cb.layout_e, { px: 1162 - e.gw * cs, py: 328 - e.gh * cs * 0.5, cs: cs });
+        var cs = combat_enemy_cs(e, (e.gw >= 7) ? 40 : 46, 750);
+        var epx = combat_fit_x(e, 1162 - e.gw * cs, cs);
+        array_push(cb.layout_e, { px: epx, py: combat_fit_y(e, epx, 328 - e.gh * cs * 0.5, cs), cs: cs });
         return;
     }
 
@@ -124,9 +125,62 @@ function combat_layout() {
     for (var i = 0; i < n; i++) {
         var ec = cb.enemies[i];
         var s  = slots[i % array_length(slots)];
-        var cs = min(42, floor(126 / max(1, ec.gw)), floor(116 / max(1, ec.gh)));
-        array_push(cb.layout_e, { px: s[0], py: s[1], cs: max(22, cs) });
+        var cs = max(22, min(42, floor(126 / max(1, ec.gw)), floor(116 / max(1, ec.gh))));
+        cs = combat_enemy_cs(ec, cs, 430);
+        var ex = combat_fit_x(ec, s[0], cs);
+        array_push(cb.layout_e, { px: ex, py: combat_fit_y(ec, ex, s[1], cs), cs: cs });
     }
+}
+
+/// Shrink the cells until the painted vehicle is no wider than `_max_w`.
+///
+/// The grid used to set the cell size on its own, which was fine while the art
+/// stretched to fit whatever shape the grid was. A vehicle drawn at its painted
+/// proportions doesn't: the finale's six-wide chassis on a saloon's square deck
+/// asks for a car wider than the screen. So the art gets a say.
+function combat_enemy_cs(_car, _cs, _max_w) {
+    if (variable_struct_exists(_car, "art_max_w") && _car.art_max_w > 0) {
+        _max_w = min(_max_w, _car.art_max_w);
+    }
+    var guard = 0;
+    while (_cs > 24 && guard < 24) {
+        var box = car_art_rect(_car, 0, 0, _cs);
+        if (box[2] - box[0] <= _max_w) break;
+        _cs -= 2;
+        guard += 1;
+    }
+    return _cs;
+}
+
+/// Slide a car sideways until its painted bodywork is on screen.
+///
+/// Enemies park hard against the right edge, and the art hangs a long way off
+/// the deck it's pinned to — a saloon's bonnet is most of the sprite. Nudging
+/// the grid is safe: shots and mouse picking both read the layout, so the two
+/// can't disagree.
+function combat_fit_x(_car, _px, _cs) {
+    var pad = 10;
+    var box = car_art_rect(_car, _px, 0, _cs);
+    var lead = _px - box[0];                       // art sticking out to the left
+    var tail = box[2] - (_px + _car.gw * _cs);     // and to the right
+    var hi = display_get_gui_width() - pad - tail - _car.gw * _cs;
+    var lo = pad + lead;
+    // Too wide to fit either way: keep the far end on screen and let the tail
+    // of the vehicle run off behind it.
+    if (hi < lo) return hi;
+    return clamp(_px, lo, hi);
+}
+
+/// Same again vertically, between the top bar and the weapons panel. A beetle
+/// or a wasp is mostly leg sprawl, and a slot near either end of the road put
+/// half of it behind a panel.
+function combat_fit_y(_car, _px, _py, _cs) {
+    var top = 70, bot = 566;
+    var box = car_art_rect(_car, _px, _py, _cs);
+    if (box[3] - box[1] >= bot - top) return _py;   // too tall to help: leave it centred
+    if (box[1] < top) return _py + (top - box[1]);
+    if (box[3] > bot) return _py - (box[3] - bot);
+    return _py;
 }
 
 function combat_log(_msg) {

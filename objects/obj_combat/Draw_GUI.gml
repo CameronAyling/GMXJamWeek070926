@@ -224,7 +224,10 @@ for (var i = 0; i < array_length(heads); i++) {
     // and clear the bodywork, whose roofline reaches above the top row of cells
     // on anything with painted art.
     var lift_by = max(hl.cs * 0.34 + 46, car_art_rise(hc, hl.cs) + 34);
-    var hy = hl.py - lift_by - ((hc.repo_max > 0) ? 14 : 0);
+    // The top bar is painted over this pass, so a block lifted clear of a
+    // beetle's leg sprawl would vanish under it. Better to let the name sit on
+    // the artwork than off the screen.
+    var hy = max(66, hl.py - lift_by - ((hc.repo_max > 0) ? 14 : 0));
     var hcol = mine ? p.cyan : faction_colour(hc.faction);
 
     // The name is the anchor for this car's whole block, so it claims its
@@ -233,21 +236,31 @@ for (var i = 0; i < array_length(heads); i++) {
     draw_label(hx, hy, hc.name, hcol, fa_left, fa_top, fnt_small);
     label_reserve(hx - 2, hy - 2, hx + nsz[0] + 2, hy + nsz[1] + 2);
 
+    // The block stacks off the measured line height rather than a fixed 15,
+    // so a change of typeface moves the rows with the text instead of printing
+    // the hull bar through the name's descenders.
+    var hrow = hy + nsz[1] + 2;
+
     var frac_hull = hc.hull / max(1, hc.hull_max);
     var bcol = (frac_hull > 0.5) ? p.ok : ((frac_hull > 0.25) ? p.warn : p.danger);
-    draw_bar(hx, hy + 15, hw, 9, frac_hull, bcol);
-    draw_label(hx + hw + 6, hy + 14, string(ceil(hc.hull)) + "/" + string(hc.hull_max),
+    draw_bar(hx, hrow, hw, 9, frac_hull, bcol);
+    draw_label(hx + hw + 6, hrow - 1, string(ceil(hc.hull)) + "/" + string(hc.hull_max),
                p.text_dim, fa_left, fa_top, fnt_small);
+    hrow += 13;
 
     // Shield pips.
     var smax = car_shield_max(hc);
-    if (smax > 0) draw_pips(hx, hy + 28, 16, 6, smax, hc.shield_cur, p.cat_defence);
+    if (smax > 0) {
+        draw_pips(hx, hrow, 16, 6, smax, hc.shield_cur, p.cat_defence);
+        hrow += 11;
+    }
 
     // Corporate repossession clock — the reason you can't just turtle back.
     if (hc.repo_max > 0) {
-        var rx = hx, ry = hy + 28 + (smax > 0 ? 11 : 0);
-        draw_label(rx, ry - 1, "REPO", p.danger, fa_left, fa_top, fnt_small);
-        draw_bar(rx + 38, ry, hw - 38, 7, hc.repo / hc.repo_max, p.danger);
+        var rlab = label_measure("REPO", fnt_small)[0] + 8;
+        draw_label(hx, hrow - 1, "REPO", p.danger, fa_left, fa_top, fnt_small);
+        draw_bar(hx + rlab, hrow, hw - rlab, 7, hc.repo / hc.repo_max, p.danger);
+        hrow += 11;
     }
 
     // Harpoon warning. It wants to sit on the name's line, out to the right —
@@ -262,9 +275,8 @@ for (var i = 0; i < array_length(heads); i++) {
             draw_label(hx + hw, hy, htxt, p.st_fire, fa_right, fa_top, fnt_small);
             label_reserve(inline_x1 - 2, hy - 2, hx + hw + 2, hy + hsz2[1] + 2);
         } else {
-            var hby = hy + 28 + ((smax > 0) ? 11 : 0) + ((hc.repo_max > 0) ? 11 : 0);
-            draw_label(hx, hby, htxt, p.st_fire, fa_left, fa_top, fnt_small);
-            label_reserve(hx - 2, hby - 2, hx + hsz2[0] + 2, hby + hsz2[1] + 2);
+            draw_label(hx, hrow, htxt, p.st_fire, fa_left, fa_top, fnt_small);
+            label_reserve(hx - 2, hrow - 2, hx + hsz2[0] + 2, hrow + hsz2[1] + 2);
         }
     }
 }
@@ -459,17 +471,23 @@ var sx0 = 712, sy0 = by0 + 8;
 draw_line_width_colour(sx0 - 14, by0 + 6, sx0 - 14, H - 18, 1, p.edge, p.edge);
 draw_label(sx0, sy0, "RIG", p.text_dim, fa_left, fa_top, fnt_small);
 
+// Both rows hang their pips off the same gutter, measured off the wider of the
+// two words rather than assumed — "DRONES" in the UI face fills the old 54 to
+// the pixel and printed into the first pip.
+var sgut = max(label_measure("POWER", fnt_small)[0],
+               label_measure("DRONES", fnt_small)[0]) + 10;
+
 // Power.
 var gen = car_power_gen(cb.player), use = car_power_use(cb.player);
 draw_label(sx0, sy0 + 20, "POWER", p.amber, fa_left, fa_top, fnt_small);
-draw_pips(sx0 + 54, sy0 + 20, 11, 10, max(gen, use), use, (use > gen) ? p.danger : p.amber);
-draw_label(sx0 + 54 + max(gen, use) * 14 + 6, sy0 + 19, string(use) + "/" + string(gen),
+draw_pips(sx0 + sgut, sy0 + 20, 11, 10, max(gen, use), use, (use > gen) ? p.danger : p.amber);
+draw_label(sx0 + sgut + max(gen, use) * 14 + 6, sy0 + 19, string(use) + "/" + string(gen),
            (use > gen) ? p.danger : p.text_dim, fa_left, fa_top, fnt_small);
 
 // Drones.
 draw_label(sx0, sy0 + 42, "DRONES", p.ok, fa_left, fa_top, fnt_small);
-draw_pips(sx0 + 54, sy0 + 42, 11, 10, array_length(cb.drones), combat_drones_idle(), p.ok);
-draw_label(sx0 + 54 + array_length(cb.drones) * 14 + 6, sy0 + 41,
+draw_pips(sx0 + sgut, sy0 + 42, 11, 10, array_length(cb.drones), combat_drones_idle(), p.ok);
+draw_label(sx0 + sgut + array_length(cb.drones) * 14 + 6, sy0 + 41,
            string(combat_drones_idle()) + " idle", p.text_dim, fa_left, fa_top, fnt_small);
 
 // Break-away — the drive spools by itself and holds at full. The button only

@@ -1,10 +1,8 @@
 #:schema ../../.gm-schema/v1.json#font
 
-# Panel headers and faction names.
-mode = "system"
-family = ["Consolas", "DejaVu Sans Mono", "Menlo", "monospace"]
-size = 22
-bold = true
+# Panel headers and faction names. The weight is in the face, so no `bold`.
+mode = "ttf"
+size = 18
 
 # Latin plus the general-punctuation block, so em-dashes and quotes
 # actually rasterise instead of coming out blank.

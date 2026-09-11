@@ -1,9 +1,13 @@
 #:schema ../../.gm-schema/v1.json#font
 
 # Dense labels: cell tags, tooltips, charge readouts.
-mode = "system"
-family = ["Consolas", "DejaVu Sans Mono", "Menlo", "monospace"]
-size = 12
+#
+# Chakra Petch Bold, bundled as source.ttf so every machine renders the same
+# thing — the whole UI is on this one face now. It is proportional, not the
+# monospace this used to be, so readout columns line up by placement rather
+# than by character count.
+mode = "ttf"
+size = 11
 
 # Latin plus the general-punctuation block, so em-dashes and quotes
 # actually rasterise instead of coming out blank.

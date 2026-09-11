@@ -1,9 +1,8 @@
 #:schema ../../.gm-schema/v1.json#font
 
-# Terminal body text. Monospace keeps the diagnostic-readout columns aligned.
-mode = "system"
-family = ["Consolas", "DejaVu Sans Mono", "Menlo", "monospace"]
-size = 16
+# Terminal body text.
+mode = "ttf"
+size = 14
 
 # Latin plus the general-punctuation block, so em-dashes and quotes
 # actually rasterise instead of coming out blank.

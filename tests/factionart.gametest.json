@@ -1,0 +1,58 @@
+{
+  "seed": 404,
+  "fps": 60,
+  "total_frames": 620,
+  "stop_on_error": true,
+
+  "chunks": {
+    "reseed": { "gml": "random_set_seed(404); return true;" },
+
+    "fight_robots":  { "gml": "run_new(); global.run.sector = 2; combat_begin(\"robots\",  false, false); return true;" },
+    "fight_bandits": { "gml": "run_new(); global.run.sector = 2; combat_begin(\"bandits\", false, false); return true;" },
+    "fight_corps":   { "gml": "run_new(); global.run.sector = 2; combat_begin(\"corps\",   false, false); return true;" },
+    "fight_insects": { "gml": "run_new(); global.run.sector = 3; combat_begin(\"insects\", false, false); return true;" },
+    "fight_boss":    { "gml": "run_new(); global.run.sector = 3; combat_begin(\"corps\",   false, true);  return true;" },
+
+    "in_combat": { "gml": "return (room == rm_combat);" },
+
+    "all_painted": {
+      "gml": "var e = global.cb.enemies; for (var i = 0; i < array_length(e); i++) { if (e[i].art == -1) return false; } return true;"
+    },
+    "art_on_screen": {
+      "gml": "var cb = global.cb; var W = display_get_gui_width(); for (var i = 0; i < array_length(cb.enemies); i++) { var l = cb.layout_e[i]; var b = car_art_rect(cb.enemies[i], l.px, l.py, l.cs); if (b[0] < 0 || b[2] > W) return false; } return true;"
+    },
+    "wings_flapping": {
+      "gml": "return (global.cb.enemies[0].art_wings == Spr_Bug_Wings_Flap);"
+    }
+  },
+
+  "timeline": [
+    { "frame": 0,  "code": ["reseed"] },
+
+    { "frame": 4,   "code":   ["fight_robots"] },
+    { "frame": 40,  "assert": { "id": "all_painted",   "name": "every Chrome Choir wasp is painted", "expect": true } },
+    { "frame": 42,  "assert": { "id": "art_on_screen", "name": "and none of them is parked off the edge",           "expect": true } },
+    { "frame": 60,  "screenshot": "art_robots.png" },
+
+    { "frame": 100, "code":   ["fight_bandits"] },
+    { "frame": 140, "assert": { "id": "all_painted",   "name": "the Rust Kings pack is painted",  "expect": true } },
+    { "frame": 142, "assert": { "id": "art_on_screen", "name": "and all four fit on the road",    "expect": true } },
+    { "frame": 160, "screenshot": "art_bandits.png" },
+
+    { "frame": 220, "code":   ["fight_corps"] },
+    { "frame": 260, "assert": { "id": "all_painted",   "name": "the Vantage adjuster is painted",         "expect": true } },
+    { "frame": 262, "assert": { "id": "art_on_screen", "name": "and its bonnet stays inside the screen",  "expect": true } },
+    { "frame": 280, "screenshot": "art_corps.png" },
+
+    { "frame": 340, "code":   ["fight_insects"] },
+    { "frame": 380, "assert": { "id": "all_painted",     "name": "the Chitin drifter is painted", "expect": true } },
+    { "frame": 382, "assert": { "id": "wings_flapping",  "name": "and has its wings on",          "expect": true } },
+    { "frame": 400, "screenshot": "art_insects.png" },
+    { "frame": 406, "screenshot": "art_insects_b.png" },
+
+    { "frame": 460, "code":   ["fight_boss"] },
+    { "frame": 520, "assert": { "id": "all_painted",   "name": "THE FORECLOSURE is painted too", "expect": true } },
+    { "frame": 522, "assert": { "id": "art_on_screen", "name": "and fits on the road",           "expect": true } },
+    { "frame": 540, "screenshot": "art_boss.png" }
+  ]
+}

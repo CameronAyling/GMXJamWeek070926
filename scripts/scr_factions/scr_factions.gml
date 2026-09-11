@@ -42,6 +42,59 @@ function faction_blurb(_key) {
     }
 }
 
+/// Hang the right bodywork on a car, from its faction alone.
+///
+/// `art_roof` is the rectangle of the sprite the cell grid is pinned to, in
+/// fractions of the canvas — measured off the art, and chosen roughly square
+/// because every enemy chassis is square. Get it wrong in one axis and the
+/// whole vehicle stretches in that axis, since the deck is what's held fixed.
+///
+///   robots   the wasp's striped abdomen is the deck
+///   insects  same again on the beetle, with the wing pair flapping over the
+///            thorax in front of it
+///   corps    the long grey roof of the saloon, middle section
+///   bandits  the tarp over the buggy's bed — and the only sprite painted
+///            nose-left, so it carries art_flip to join the traffic
+function faction_art(_car) {
+    switch (_car.faction) {
+        case "robots":
+            _car.art      = Spr_Robot_Wasp;
+            _car.art_roof = [0.58, 0.30, 0.90, 0.66];
+            break;
+
+        case "insects":
+            _car.art             = Spr_Bug;
+            _car.art_roof        = [0.58, 0.31, 0.90, 0.68];
+            _car.art_wings       = Spr_Bug_Wings_Flap;
+            _car.art_wings_at    = [0.45, 0.50];
+            _car.art_wings_scale = 1.35;
+            break;
+
+        case "corps":
+            // Drawn at the proportions it was painted at. The deck is a square
+            // 250px patch of the grey roof — square in sprite PIXELS, not in
+            // fractions, which is what keeps a square chassis from stretching
+            // the saloon (0.25 x 998 == 0.60 x 416).
+            //
+            // Held to 500px on screen, half the canvas it was painted on and
+            // about the footprint of the player's rig. Without the cap a
+            // sixteen-cell deck asks for a car twice that: undistorted, but
+            // towering over everything else on the road.
+            _car.art         = Spr_Car_Corporate;
+            _car.art_roof    = [0.275, 0.20, 0.525, 0.80];
+            _car.art_uniform = true;
+            _car.art_max_w   = 500;
+            break;
+
+        case "bandits":
+            _car.art      = Spr_Car_Bandit;
+            _car.art_roof = [0.17, 0.29, 0.62, 0.69];
+            _car.art_flip = true;
+            break;
+    }
+    return _car;
+}
+
 /// Place a facility anywhere it fits. Tries every orientation, starting from a
 /// random one, so a tight grid (a 3x3 hauler, a 2x2 bandit) packs reliably
 /// instead of depending on one lucky guess.
@@ -131,6 +184,7 @@ function enemy_car(_faction, _name, _gw, _gh, _hull, _diff, _core, _pool, _fill,
     var c = car_new(_name, _gw, _gh, _hull);
     c.faction = _faction;
     c.organic = _organic;
+    faction_art(c);
 
     if (!_organic) enemy_add(c, tier_pick("reac", _diff, _cap_tier));
 
@@ -173,6 +227,7 @@ function enemy_group(_faction, _diff, _elite, _boss) {
         // twice your rig with a clock on top.
         var b = car_new("THE FORECLOSURE", 6, 5, 58);
         b.faction = "corps";
+        faction_art(b);
         enemy_add(b, "reac_3");
         enemy_add(b, "shd_3");
         // Composite, not the scrap grade — thirty cells of chassis can carry
@@ -209,6 +264,7 @@ function enemy_group(_faction, _diff, _elite, _boss) {
                 var dc = car_new("CHOIR DRONE " + string(i + 1), 1, 1,
                                  enemy_hull(5, _diff, hull_mult));
                 dc.faction = "robots";
+                faction_art(dc);            // a little wasp, escorting the big one
                 enemy_add(dc, "drn_1");
                 array_push(cars, dc);
             }
@@ -226,6 +282,7 @@ function enemy_group(_faction, _diff, _elite, _boss) {
                 var bc = car_new("RUST KING " + tags[i], 2, 2,
                                  enemy_hull(13, _diff, hull_mult));
                 bc.faction = "bandits";
+                faction_art(bc);
                 // Welded together out of other people's cars. Whatever you
                 // break on a Rust King stays broken for the rest of the fight.
                 bc.no_repair = true;

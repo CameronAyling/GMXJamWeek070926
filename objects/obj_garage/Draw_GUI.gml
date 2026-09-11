@@ -154,12 +154,12 @@ for (var i = 0; i < array_length(r.inv); i++) {
                           hov ? ccol : merge_colour(ccol, p.edge, 0.6), true);
 
     draw_fac_glyph(d.family, ix1 + 30, (ry1 + ry2) * 0.5, 13, ccol);
-    draw_label(ix1 + 52, ry1 + 5, d.name, p.text, fa_left, fa_top, fnt_term);
-    draw_label(ix1 + 52, ry1 + 24, fac_stat_line(did), p.text_dim, fa_left, fa_top, fnt_small);
+    draw_label(ix1 + 52, ry1 + 3, d.name, p.text, fa_left, fa_top, fnt_term);
+    draw_label(ix1 + 52, ry1 + 21, fac_stat_line(did), p.text_dim, fa_left, fa_top, fnt_small);
 
     if (ctx.shop) {
         // On the stat-line row: names can be long, stat lines never reach here.
-        draw_label(ix2 - 18, ry1 + 24, "SELL " + string(sell_price(did)),
+        draw_label(ix2 - 18, ry1 + 21, "SELL " + string(sell_price(did)),
                    p.amber, fa_right, fa_top, fnt_small);
     }
 
@@ -202,8 +202,8 @@ if (ctx.shop) {
         draw_rectangle_colour(sx1 + 8, ry1, sx2 - 8, ry2, ccol, ccol, ccol, ccol, true);
 
         draw_fac_glyph(d.family, sx1 + 30, (ry1 + ry2) * 0.5, 13, ccol);
-        draw_label(sx1 + 52, ry1 + 5, d.name, afford ? p.text : p.text_mute, fa_left, fa_top, fnt_term);
-        draw_label(sx1 + 52, ry1 + 24, fac_stat_line(did), p.text_dim, fa_left, fa_top, fnt_small);
+        draw_label(sx1 + 52, ry1 + 3, d.name, afford ? p.text : p.text_mute, fa_left, fa_top, fnt_term);
+        draw_label(sx1 + 52, ry1 + 21, fac_stat_line(did), p.text_dim, fa_left, fa_top, fnt_small);
         draw_label(sx2 - 18, ry1 + 6, string(d.cost), afford ? p.amber : p.danger, fa_right, fa_top, fnt_term);
 
         if (hov) ui_tooltip(d.name + "   " + string(d.cost) + " scrap", d.desc);

@@ -1,11 +1,10 @@
 #:schema ../../.gm-schema/v1.json#font
 
-# Title card only — a wide grotesque reads more "chrome signage" than the
-# monospace does.
-mode = "system"
-family = ["Bahnschrift", "Impact", "Arial Black", "DejaVu Sans", "sans-serif"]
-size = 64
-bold = true
+# Title card only. Same face as the rest of the UI, just big — Chakra Petch's
+# squared-off terminals carry the chrome-signage read the old wide grotesque
+# was there for.
+mode = "ttf"
+size = 56
 
 # Latin plus the general-punctuation block, so em-dashes and quotes
 # actually rasterise instead of coming out blank.

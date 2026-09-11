@@ -572,84 +572,123 @@ function draw_facility(_car, _idx, _px, _py, _cs, _opts) {
 }
 
 /// The painted car art, fitted to the chassis footprint so the wireframe and
-/// its readouts sit over the top of it. `_shadow` may be -1.
+/// its readouts sit over the top of it.
 ///
-/// Both car and shadow sprites are authored top-left aligned on canvases of
-/// different sizes — the shadow's is larger, with the blur trailing down and
-/// right — so drawing the pair from the same corner at the same scale puts the
-/// shadow under the body with its offset already baked in.
 /// The art is placed FROM the grid, not the other way round: the sprite is
 /// scaled and offset so its roof panel lands exactly on the cell grid, and the
 /// cab, bonnet and wheels hang off wherever that puts them. The grid stays the
 /// authority, so hit-testing is untouched — and a facility always sits on the
 /// deck rather than floating over a wing.
 ///
-/// The two axes scale independently. The roof is roughly square and the rig
-/// grows to twice as wide as it is tall, so a uniform scale would either
-/// overflow the vehicle or shrink the cells to nothing; letting the van
-/// lengthen with the chassis is both the readable choice and the honest one —
-/// you really are bolting more deck onto it.
-function draw_car_art(_car, _px, _py, _cs, _sprite, _shadow, _flip) {
+/// The two axes scale independently unless the car asks otherwise. The roof is
+/// roughly square and the rig grows to twice as wide as it is tall, so a
+/// uniform scale would either overflow the vehicle or shrink the cells to
+/// nothing; letting the van lengthen with the chassis is both the readable
+/// choice and the honest one — you really are bolting more deck onto it.
+///
+/// Nothing is drawn under the vehicles. The rigs sit flat on the road.
+function draw_car_art(_car, _px, _py, _cs, _sprite, _flip) {
     if (_sprite == -1) return;
 
-    var roof = variable_struct_exists(_car, "art_roof")
-             ? _car.art_roof : [0, 0, 1, 1];
+    // Two flips, and they mean different things: the caller's, which points
+    // the whole rig the other way, and the art's own, which only says which
+    // way the sprite was painted. A nose-left sprite drawn nose-right is the
+    // two of them cancelling out.
+    var af   = variable_struct_exists(_car, "art_flip") ? bool(_car.art_flip) : false;
+    var flip = (bool(_flip) != af);
 
-    // Where the deck is on screen.
-    var gx1 = _px, gy1 = _py;
-    var gx2 = _px + _car.gw * _cs, gy2 = _py + _car.gh * _cs;
-
-    // Scale the whole sprite so its roof fraction covers exactly that.
-    var rw = max(0.01, roof[2] - roof[0]);
-    var rh = max(0.01, roof[3] - roof[1]);
-    var dw = (gx2 - gx1) / rw;
-    var dh = (gy2 - gy1) / rh;
-    var dx = gx1 - roof[0] * dw;
-    var dy = gy1 - roof[1] * dh;
+    var box = car_art_rect(_car, _px, _py, _cs, flip);
+    var dx = box[0], dy = box[1];
+    var dw = box[2] - box[0], dh = box[3] - box[1];
 
     var sw = sprite_get_width(_sprite), sh = sprite_get_height(_sprite);
     var xs = dw / sw, ys = dh / sh;
+    if (flip) xs = -xs;
 
     // Respect any alpha the caller set — wrecks are drawn dimmed.
-    var a  = draw_get_alpha();
-    var ox = _flip ? (dx + dw) : dx;
-    if (_flip) xs = -xs;
+    var a = draw_get_alpha();
 
-    var p  = global.PAL;
-    var gs = ground_style();
+    draw_art_sprite(_sprite, 0, dx, dy, dw, dh, xs, ys, c_white, a);
 
-    // A contact patch under the body. The shadow art alone is a silhouette
-    // offset off to one side, which reads as the rig hovering over the sand —
-    // this is the bit that actually plants it.
-    // Measured off the whole drawn vehicle, not the roof — anchoring it to the
-    // deck left the patch under the back half and the bonnet still hovering.
-    if (gs.contact > 0) {
-        var ccx = dx + dw * 0.5;
-        var chw = dw * 0.40;
-        var cyb = dy + dh * 0.82;
-        var cht = dh * 0.30;
-        for (var b = 2; b >= 0; b--) {
-            draw_set_alpha(a * gs.contact * (b == 0 ? 1 : 0.30));
-            var sprd = b * dh * 0.035;
-            draw_ellipse_colour(ccx - chw - sprd, cyb - cht - sprd,
-                                ccx + chw + sprd, cyb + sprd,
-                                p.shade, p.shade, false);
-        }
-        draw_set_alpha(a);
+    // Wings sit over the body — a Chitin drifter is a beetle, and the flap is
+    // the only thing on the road that says so. Placed and sized against the
+    // body sprite's own canvas, so it rides along with every rescale.
+    var wing = variable_struct_exists(_car, "art_wings") ? _car.art_wings : -1;
+    if (wing != -1) {
+        var at = variable_struct_exists(_car, "art_wings_at") ? _car.art_wings_at : [0.5, 0.5];
+        var wk = variable_struct_exists(_car, "art_wings_scale") ? _car.art_wings_scale : 1;
+        var wcx = dx + (flip ? (1 - at[0]) : at[0]) * dw;
+        var wcy = dy + at[1] * dh;
+        var wxs = xs * wk, wys = ys * wk;
+        // Free-running off the wall clock rather than the fight timer, so the
+        // beetle keeps flapping in the garage and on the end-of-run manifest.
+        var wfps = max(1, sprite_get_speed(wing));
+        var wf   = floor(current_time * 0.001 * wfps) mod sprite_get_number(wing);
+        draw_sprite_ext(wing, wf,
+                        wcx - (sprite_get_width(wing)  * 0.5 - sprite_get_xoffset(wing)) * wxs,
+                        wcy - (sprite_get_height(wing) * 0.5 - sprite_get_yoffset(wing)) * wys,
+                        wxs, wys, 0, c_white, a);
     }
 
-    // The shadow art is a solid mid-brown silhouette, so it has to be inked
-    // down and made translucent before it behaves like a shadow.
-    if (_shadow != -1) {
-        var shc = merge_colour(c_white, p.shade, gs.sh_dark);
-        draw_sprite_ext(_shadow, 0, ox, dy + dh * gs.sh_off, xs, ys, 0, shc, a * gs.sh_a);
-    }
-    draw_sprite_ext(_sprite, 0, ox, dy, xs, ys, 0, c_white, a);
     draw_set_alpha(a);
 }
 
+/// The vehicle art, laid into the box (_dx, _dy, _dw x _dh).
+///
+/// The sprites come in with whatever origin the artist saved — the corporate
+/// saloon is centred, the rest are top-left — so the origin is subtracted here
+/// rather than assumed away. `_xs` is already negative for a flipped rig, which
+/// is what puts the drawn image's right edge on the box's right edge.
+function draw_art_sprite(_spr, _frame, _dx, _dy, _dw, _dh, _xs, _ys, _col, _alpha) {
+    var ox = (_xs < 0 ? _dx + _dw : _dx) + sprite_get_xoffset(_spr) * _xs;
+    var oy = _dy + sprite_get_yoffset(_spr) * _ys;
+    draw_sprite_ext(_spr, _frame, ox, oy, _xs, _ys, 0, _col, _alpha);
+}
+
+/// The screen box the painted bodywork fills, as [x1, y1, x2, y2] — the grid
+/// box itself for a car drawn as a cutaway.
+///
+/// The art is placed FROM the grid, not the other way round: the sprite is
+/// scaled so its roof fraction lands exactly on the cell grid, and the cab,
+/// bonnet and wheels hang off wherever that puts them. Flipping mirrors the
+/// hangover without moving the deck, so a nose-left sprite can be pointed the
+/// same way as everything else on the road and still keep its facilities on
+/// its own cargo bed.
+/// `art_uniform` opts a vehicle out of the independent axes: it is drawn at the
+/// proportions it was painted at, sized so the roof still covers the deck, and
+/// the deck is then centred on it. The saloon needs that — it is two and a half
+/// times as long as it is wide, and stretching a square grid across it turned a
+/// limousine into a van.
+function car_art_rect(_car, _px, _py, _cs, _flip = undefined) {
+    var gw = _px + _car.gw * _cs, gh = _py + _car.gh * _cs;
+    if (!variable_struct_exists(_car, "art") || _car.art == -1) return [_px, _py, gw, gh];
+
+    var roof = variable_struct_exists(_car, "art_roof") ? _car.art_roof : [0, 0, 1, 1];
+    var flip = (_flip != undefined) ? _flip
+             : (variable_struct_exists(_car, "art_flip") ? _car.art_flip : false);
+
+    // Scale the whole sprite so its roof fraction covers exactly the deck.
+    var dw = (gw - _px) / max(0.01, roof[2] - roof[0]);
+    var dh = (gh - _py) / max(0.01, roof[3] - roof[1]);
+
+    if (variable_struct_exists(_car, "art_uniform") && _car.art_uniform) {
+        var sw = sprite_get_width(_car.art), sh = sprite_get_height(_car.art);
+        var s  = max(dw / sw, dh / sh);     // the tighter axis wins, so the roof still covers
+        dw = sw * s;
+        dh = sh * s;
+    }
+
+    // Hang the sprite off the middle of the deck. Identical to pinning the
+    // roof's top-left corner when the axes scale independently, and the only
+    // placement that makes sense once they don't.
+    var rcx = (roof[0] + roof[2]) * 0.5;
+    var dx = (_px + gw) * 0.5 - (flip ? (1 - rcx) : rcx) * dw;
+    var dy = (_py + gh) * 0.5 - (roof[1] + roof[3]) * 0.5 * dh;
+    return [dx, dy, dx + dw, dy + dh];
+}
+
 /// Draw a whole car. `_opts` fields: flip, show_charge, hover_fac, target_fac,
-/// selected_fac, dim, sprite, shadow.
+/// selected_fac, dim, sprite.
 function draw_car(_car, _px, _py, _cs, _opts = undefined) {
     var p = global.PAL;
     var o = {
@@ -658,8 +697,7 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
         outline: -1, dim: false, dark: false,
         // Default to whatever bodywork the car carries, so a caller only has to
         // name a sprite when it wants to override one.
-        sprite: variable_struct_exists(_car, "art")        ? _car.art        : -1,
-        shadow: variable_struct_exists(_car, "art_shadow") ? _car.art_shadow : -1,
+        sprite: variable_struct_exists(_car, "art") ? _car.art : -1,
     };
     if (_opts != undefined) {
         var keys = variable_struct_get_names(_opts);
@@ -681,7 +719,7 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
     var has_art = (o.sprite != -1);
     o.dark = has_art;
 
-    draw_car_art(_car, _px, _py, _cs, o.sprite, o.shadow, o.flip);
+    draw_car_art(_car, _px, _py, _cs, o.sprite, o.flip);
 
     if (!has_art) draw_chassis(_car, _px, _py, _cs, chassis_col, o.flip);
 
@@ -724,10 +762,7 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
 /// the art is hung off the deck and a big rig's roofline now climbs well above
 /// the top row of cells.
 function car_art_rise(_car, _cs) {
-    if (!variable_struct_exists(_car, "art") || _car.art == -1) return 0;
-    var roof = variable_struct_exists(_car, "art_roof") ? _car.art_roof : [0, 0, 1, 1];
-    var rh = max(0.05, roof[3] - roof[1]);
-    return roof[1] * (_car.gh * _cs / rh);
+    return -car_art_rect(_car, 0, 0, _cs)[1];
 }
 
 /// Highlight ring around a facility's bounding box. `_dashed` marks a target.
