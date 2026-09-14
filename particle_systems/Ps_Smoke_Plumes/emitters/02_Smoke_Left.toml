@@ -19,12 +19,12 @@ max = 0.5
 increase = -0.009
 
 [direction]
-min = 270.0
-max = 270.0
+min = 170.0
+max = 195.0
 wiggle = -9.0
 
 [gravity]
-direction = 270.0
+direction = 180.0
 force = 0.08
 
 [lifetime]
@@ -40,7 +40,7 @@ max = 180.0
 increase = 1.8
 
 [colours]
-start = "#4D4D4D"
-mid = "#343434"
-end = "#1A1A1A"
+start = "#4D4D4D80"
+mid = "#34343450"
+end = "#1A1A1A00"
 

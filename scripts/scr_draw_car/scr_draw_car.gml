@@ -597,6 +597,20 @@ function draw_car_art(_car, _px, _py, _cs, _sprite, _flip) {
     var af   = variable_struct_exists(_car, "art_flip") ? bool(_car.art_flip) : false;
     var flip = (bool(_flip) != af);
 
+    // Respect any alpha the caller set — wrecks are drawn dimmed.
+    var a = draw_get_alpha();
+
+    // The postie hauls a separate cargo box. The bodywork stays a fixed size
+    // while the box is what grows to carry the deck: draw the body pinned to the
+    // front of the grid, then stretch the box over the whole deck so the
+    // facilities bolt onto it. Everything else keeps the old whole-sprite fit.
+    if (variable_struct_exists(_car, "art_box")) {
+        draw_postie_body(_car, _px, _py, _cs, _sprite, flip, a);
+        draw_deck_box(_car, _px, _py, _cs, _car.art_box, a);
+        draw_set_alpha(a);
+        return;
+    }
+
     var box = car_art_rect(_car, _px, _py, _cs, flip);
     var dx = box[0], dy = box[1];
     var dw = box[2] - box[0], dh = box[3] - box[1];
@@ -604,9 +618,6 @@ function draw_car_art(_car, _px, _py, _cs, _sprite, _flip) {
     var sw = sprite_get_width(_sprite), sh = sprite_get_height(_sprite);
     var xs = dw / sw, ys = dh / sh;
     if (flip) xs = -xs;
-
-    // Respect any alpha the caller set — wrecks are drawn dimmed.
-    var a = draw_get_alpha();
 
     draw_art_sprite(_sprite, 0, dx, dy, dw, dh, xs, ys, c_white, a);
 
@@ -630,7 +641,113 @@ function draw_car_art(_car, _px, _py, _cs, _sprite, _flip) {
                         wxs, wys, 0, c_white, a);
     }
 
+    // Spinning tyres — the bandit monster truck has its wheels baked into the
+    // paint, so tread is marched over each one to sell that it's rolling. The
+    // rects are in the painted sprite's own space; flipping mirrors them the
+    // same way the bodywork mirrors.
+    var tyres = variable_struct_exists(_car, "art_tyres") ? _car.art_tyres : -1;
+    if (is_array(tyres)) {
+        for (var ti = 0; ti < array_length(tyres); ti++) {
+            var tr  = tyres[ti];
+            var fx1 = flip ? (1 - tr[2]) : tr[0];
+            var fx2 = flip ? (1 - tr[0]) : tr[2];
+            draw_tyre_tread(dx + fx1 * dw, dy + tr[1] * dh,
+                            dx + fx2 * dw, dy + tr[3] * dh, a);
+        }
+    }
+
     draw_set_alpha(a);
+}
+
+/// The postie's bodywork at a FIXED size, pinned to the front of the grid.
+///
+/// Sized to a three-cell-wide deck (the base chassis) rather than the current
+/// grid, so welding on bays lengthens the cargo box behind it without the car
+/// itself ballooning. Height still tracks the deck. The roof region's front
+/// edge lands on the grid's nose end, so the cab and bonnet always poke out
+/// past the box no matter how much cargo is stacked on the back.
+function draw_postie_body(_car, _px, _py, _cs, _spr, _flip, _alpha) {
+    var roof  = variable_struct_exists(_car, "art_roof") ? _car.art_roof : [0, 0, 1, 1];
+    var ref_w = 3;                                          // base chassis width
+    var dw = (ref_w   * _cs) / max(0.01, roof[2] - roof[0]);
+    var dh = (_car.gh * _cs) / max(0.01, roof[3] - roof[1]);
+
+    // Vertically centre the roof region on the deck.
+    var cy = _py + _car.gh * _cs * 0.5;
+    var dy = cy - (roof[1] + roof[3]) * 0.5 * dh;
+
+    // Anchor the roof region's nose edge to the deck's nose end. Nose is the
+    // high-x (right) end unless the rig is flipped.
+    var dx;
+    if (_flip) dx = _px               - (1 - roof[2]) * dw;   // nose at the left
+    else       dx = _px + _car.gw * _cs - roof[2]     * dw;   // nose at the right
+
+    var xs = dw / sprite_get_width(_spr);
+    if (_flip) xs = -xs;
+    var ys = dh / sprite_get_height(_spr);
+    draw_art_sprite(_spr, 0, dx, dy, dw, dh, xs, ys, c_white, _alpha);
+}
+
+/// The cargo box that grows with the deck. Stretched to cover the whole grid
+/// (plus a hair of padding) so it reads as the surface the facilities bolt to,
+/// and lengthens every time a bay is welded on. Drawn over the bodywork but
+/// under the facility panels, which draw_car lays down afterwards.
+function draw_deck_box(_car, _px, _py, _cs, _box, _alpha) {
+    var pad = _cs * 0.08;
+    var x1 = _px - pad,                    y1 = _py - pad;
+    var x2 = _px + _car.gw * _cs + pad,    y2 = _py + _car.gh * _cs + pad;
+    draw_sprite_ext(_box, 0, x1, y1,
+                    (x2 - x1) / sprite_get_width(_box),
+                    (y2 - y1) / sprite_get_height(_box),
+                    0, c_white, _alpha);
+}
+
+/// Marching tread over one painted tyre, so a rolling rig reads as rolling.
+/// The bars crawl along the travel axis (screen-horizontal) and wrap, each
+/// clipped to the tyre box. Free-running off the wall clock, so the wheels keep
+/// turning in the garage and on the end-of-run manifest, not just mid-fight.
+function draw_tyre_tread(_x1, _y1, _x2, _y2, _alpha) {
+    var p  = global.PAL;
+    var rw = _x2 - _x1, rh = _y2 - _y1;
+    if (rw <= 2 || rh <= 2) return;
+
+    var gap   = rh * 0.30;                          // spacing between grooves
+    var slant = rw * 0.14;                          // diagonal lean of the tread
+    var spd   = rh * 1.6;                           // px/sec the tread crawls
+    var phase = (current_time * 0.001 * spd) mod gap;
+
+    var dk = merge_colour(p.shade, p.text, 0.20);   // dark rubber groove
+    var lt = p.lift;                                // catch-light chasing it
+    var wgt = max(2, rh * 0.05);
+
+    // Crawls toward the rear (leftward, since the rig faces right) — that's the
+    // way a wheel's top surface tracks when it rolls forward from above.
+    for (var bx = _x1 - phase - gap; bx < _x2 + gap; bx += gap) {
+        _tread_seg(bx,             _y1, bx + slant,             _y2, _x1, _x2, dk, _alpha * 0.5,  wgt);
+        _tread_seg(bx + gap * 0.42, _y1, bx + gap * 0.42 + slant, _y2, _x1, _x2, lt, _alpha * 0.20, max(1, wgt * 0.6));
+    }
+}
+
+/// One tread groove, clipped to the vertical strip [_cx1, _cx2] so it never
+/// spills off the rubber. Clips in segment-parameter space, which handles the
+/// diagonal without needing a scissor rect.
+function _tread_seg(_ax, _ay, _bx, _by, _cx1, _cx2, _col, _alpha, _w) {
+    var dxr = _bx - _ax;
+    var t0 = 0, t1 = 1;
+    if (dxr == 0) {
+        if (_ax < _cx1 || _ax > _cx2) return;
+    } else {
+        var ta = (_cx1 - _ax) / dxr;
+        var tb = (_cx2 - _ax) / dxr;
+        t0 = max(0, min(ta, tb));
+        t1 = min(1, max(ta, tb));
+        if (t0 >= t1) return;
+    }
+    var dyr = _by - _ay;
+    draw_set_alpha(_alpha);
+    draw_line_width_colour(_ax + dxr * t0, _ay + dyr * t0,
+                           _ax + dxr * t1, _ay + dyr * t1, _w, _col, _col);
+    draw_set_alpha(1);
 }
 
 /// The vehicle art, laid into the box (_dx, _dy, _dw x _dh).
@@ -643,6 +760,33 @@ function draw_art_sprite(_spr, _frame, _dx, _dy, _dw, _dh, _xs, _ys, _col, _alph
     var ox = (_xs < 0 ? _dx + _dw : _dx) + sprite_get_xoffset(_spr) * _xs;
     var oy = _dy + sprite_get_yoffset(_spr) * _ys;
     draw_sprite_ext(_spr, _frame, ox, oy, _xs, _ys, 0, _col, _alpha);
+}
+
+/// A flyer's shadow on the sand. The shadow sprite was painted to the body's own
+/// proportions, so it drops straight into the same rect the bodywork fills, then
+/// is pushed below the rig. As the bug climbs (`_rise`, 0 low .. 1 high) the
+/// shadow shrinks, fades, and slides a little further beneath it — the three
+/// cues together that read as height off the ground.
+function draw_car_shadow(_car, _px, _py, _cs, _flip, _rise) {
+    var spr = _car.art_shadow;
+    if (spr == -1) return;
+
+    var af   = variable_struct_exists(_car, "art_flip") ? bool(_car.art_flip) : false;
+    var flip = (bool(_flip) != af);
+    var box  = car_art_rect(_car, _px, _py, _cs, flip);
+    var dx = box[0], dy = box[1];
+    var dw = box[2] - box[0], dh = box[3] - box[1];
+
+    var k   = 1 - 0.14 * _rise;
+    var sdw = dw * k, sdh = dh * k;
+    var sx  = dx + (dw - sdw) * 0.5;
+    var sy  = dy + (dh - sdh) * 0.5 + _cs * (0.20 + 0.12 * _rise);
+    var xs  = sdw / sprite_get_width(spr);
+    var ys  = sdh / sprite_get_height(spr);
+    if (flip) xs = -xs;
+
+    var al = 0.32 * (1 - 0.30 * _rise);
+    draw_art_sprite(spr, 0, sx, sy, sdw, sdh, xs, ys, c_black, al);
 }
 
 /// The screen box the painted bodywork fills, as [x1, y1, x2, y2] — the grid
@@ -718,6 +862,15 @@ function draw_car(_car, _px, _py, _cs, _opts = undefined) {
     // completely against the roof.
     var has_art = (o.sprite != -1);
     o.dark = has_art;
+
+    // Flyers cast a shadow on the sand and hover above it: the shadow goes down
+    // first, then the whole rig lifts a touch and bobs. The bob is kept small so
+    // the facility hitboxes on the ground still line up with what you see.
+    if (has_art && variable_struct_exists(_car, "art_shadow")) {
+        var bob = (sin(current_time * 0.005) + 1) * 0.5;    // 0 low .. 1 high
+        draw_car_shadow(_car, _px, _py, _cs, o.flip, bob);
+        _py -= bob * _cs * 0.10;
+    }
 
     draw_car_art(_car, _px, _py, _cs, o.sprite, o.flip);
 

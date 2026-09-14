@@ -502,6 +502,9 @@ function car_attach_trailer(_car) {
 function car_new_player() {
     var c = car_new("THE LAST CALL", 3, 3, 36);
     c.art = Spr_Car_Postie;
+    // The bodywork stays a fixed size; the roof box is the cargo deck that
+    // grows as you weld on bays. See draw_car_art's art_box branch.
+    c.art_box = Spr_Car_Postie_RoofBox;
     car_place(c, "reac_1", 0, 0);      // gen 5
     car_place(c, "las_1",  1, 0);      // 1 power
     car_place(c, "drv_1",  2, 0);      // 1 power

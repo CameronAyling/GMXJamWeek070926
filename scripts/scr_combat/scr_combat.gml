@@ -11,7 +11,7 @@
 
 #macro DRONE_REPAIR_TIME  1.1    // seconds per hit point repaired
 #macro DRONE_DOUSE_RATE   2.5    // extra fire-duration burned per second
-#macro DRONE_DRAW_CELLS   1.55   // drone body width, in grid cells
+#macro DRONE_DRAW_CELLS   3.0    // drone body width, in grid cells
 #macro DRONE_ROTOR_SPIN   760    // rotor degrees per second; a 2-blade rotor
                                  // strobes above roughly 1400 at 60fps
 #macro SHOT_SPEED         620    // pixels per second
@@ -348,7 +348,7 @@ function combat_damage(_car_i, _fac_i, _dmg, _hull_bonus, _pierce) {
         var lay = combat_layout_for(_car_i);
         var bx = lay.px + car.gw * lay.cs * 0.5;
         var by = lay.py + car.gh * lay.cs * 0.5;
-        vfx_particles(Ps_Explosion, bx, by);
+        vfx_explode_car(bx, by, car.gw, car.gh, lay.cs);
         vfx_burst("blast", bx, by, lay.cs, irandom(359));
         vfx_burst("puff",  bx, by + lay.cs * 0.4, lay.cs * 1.4);
         global.cb.shake = max(global.cb.shake, 10);

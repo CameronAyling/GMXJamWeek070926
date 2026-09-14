@@ -50,45 +50,14 @@ if (cb.shake > 0) {
     ky = random_range(-cb.shake, cb.shake);
 }
 
-// The tarmac band, its violet edge rules and the scrolling lane dashes used to
-// live here. The scrolling desert above does that job now.
-// ---------------------------------------------------------------- the road
-// Scrolling tarmac under both rigs so the fight reads as happening at speed.
-// Printed as a road is on the atlas: a band of tarmac laid on the paper with
-// a dark casing either side and cream dashes running down it.
-var road_y0 = 108, road_y1 = 556;
-// Kept pale: on a map the carriageway is a fill a shade off the paper, not a
-// dark slab. Anything heavier and the rigs stop reading as ink on a page.
-var tar_hi = merge_colour(p.bg, p.shade, 0.15);
-var tar_lo = merge_colour(p.bg, p.shade, 0.24);
-draw_rectangle_colour(0, road_y0, W, road_y1, tar_hi, tar_hi, tar_lo, tar_lo, false);
+// The tarmac band, its kerbs, hatching and scrolling lane dashes used to live
+// here. They're gone now — the scrolling desert alone carries the speed, and
+// the rigs sit straight on the sand.
 
-// Hard shoulder hatching along both kerbs.
-draw_set_alpha(0.20);
-for (var hx = -24; hx < W + 24; hx += 16) {
-    draw_line_width_colour(hx, road_y0 + 13, hx + 10, road_y0 + 1, 2, p.atlas_ink, p.atlas_ink);
-    draw_line_width_colour(hx, road_y1 - 1,  hx + 10, road_y1 - 13, 2, p.atlas_ink, p.atlas_ink);
-}
-draw_set_alpha(1);
-
-var scroll = (cb.paused || cb.over != "") ? 0 : cb.time;
-draw_set_alpha(0.55);
-for (var i = 0; i < 7; i++) {
-    var ly = road_y0 + 34 + i * 68;
-    var off = frac(scroll * (0.35 + i * 0.05)) * 190;
-    for (var dx = -190; dx < W + 190; dx += 190) {
-        draw_line_width_colour(dx + off, ly, dx + off + 84, ly, 3, p.atlas_cream, p.atlas_cream);
-    }
-}
-draw_set_alpha(1);
-
-// Kerb lines: heavy ink casing, the way a road is drawn on the map.
-draw_line_width_colour(0, road_y0, W, road_y0, 3, p.atlas_ink, p.atlas_ink);
-draw_line_width_colour(0, road_y1, W, road_y1, 3, p.atlas_ink, p.atlas_ink);
-draw_set_alpha(0.5);
-draw_line_width_colour(0, road_y0 + 3, W, road_y0 + 3, 1, p.atlas_cream, p.atlas_cream);
-draw_line_width_colour(0, road_y1 - 3, W, road_y1 - 3, 1, p.atlas_cream, p.atlas_cream);
-draw_set_alpha(1);
+// ---------------------------------------------------------------- ground dust
+// Sand kicked off the tyres, painted under the rigs so it reads as coming out
+// from behind the wheels rather than sitting on top of the bodywork.
+vfx_draw_under();
 
 // ---------------------------------------------------------------- cars
 // Player.
@@ -185,7 +154,7 @@ for (var i = 0; i < array_length(cb.drones); i++) {
     for (var s = -1; s <= 1; s += 2) {
         var rx = hov_x + s * 109 * dsc;
         var ry = hov_y - 9.5 * dsc;
-        var rs = dsc * 0.85;
+        var rs = dsc * 1.2;   // sized to fill the ring housings, not sit inside them
         draw_set_alpha(0.40);
         draw_sprite_ext(Spr_Helper_Drone_propellor, 0, rx, ry, rs, rs,
                         (spin - 34) * s, c_white, 1);
@@ -303,6 +272,10 @@ for (var i = 0; i < array_length(cb.shots); i++) {
             draw_line_width_colour(prev_x, prev_y, nx, ny, 2, p.st_elec, c_white);
             prev_x = nx; prev_y = ny;
         }
+    } else if (s.family == "flm") {
+        // A real gout of fire rather than a white line: a jet of flame sprites
+        // marched from the muzzle out to the leading edge, additive so it glows.
+        vfx_flame_jet(s.x0, s.y0, cx, cy, 46, i);
     } else {
         var tail = (s.family == "riv") ? 0.06 : 0.14;
         var bx = lerp(s.x0, s.x1, max(0, tt - tail));
@@ -314,7 +287,6 @@ for (var i = 0; i < array_length(cb.shots); i++) {
         draw_set_alpha(1);
         draw_line_width_colour(bx, by, cx, cy, wdt, c_white, s.col);
         if (s.family == "riv") draw_circle_colour(cx, cy, 4, c_white, s.col, false);
-        if (s.family == "flm") draw_circle_colour(cx, cy, 6, p.st_fire, p.amber, false);
         if (s.family == "acd") draw_circle_colour(cx, cy, 5, p.st_acid, p.lime, false);
         if (s.family == "oil") draw_circle_colour(cx, cy, 5, p.st_oil, p.violet, false);
     }
@@ -574,7 +546,9 @@ if (cb.sel_weapon >= 0 && cb.over == "") {
              + " — click an enemy facility  (ESC to cancel)", p.cyan, fa_center, fa_middle, fnt_term);
 }
 
-if (cb.over != "") {
+// Hold the resolution panel off for a beat so the killing-blow explosion plays
+// out on the open field before the screen dims over it.
+if (cb.over != "" && cb.over_t >= 0.85) {
     draw_set_alpha(0.72);
     draw_rectangle_colour(0, 0, W, H, p.bg, p.bg, p.bg, p.bg, false);
     draw_set_alpha(1);

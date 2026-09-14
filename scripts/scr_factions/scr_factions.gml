@@ -42,6 +42,16 @@ function faction_blurb(_key) {
     }
 }
 
+/// True for factions that fly rather than drive — the wasp and the winged
+/// chitin. They never touch the sand, so nothing kicks dust off their "tyres".
+function faction_flies(_key) {
+    switch (_key) {
+        case "robots":  return true;    // wasp
+        case "insects": return true;    // winged bug / ants
+        default:        return false;
+    }
+}
+
 /// Hang the right bodywork on a car, from its faction alone.
 ///
 /// `art_roof` is the rectangle of the sprite the cell grid is pinned to, in
@@ -58,8 +68,16 @@ function faction_blurb(_key) {
 function faction_art(_car) {
     switch (_car.faction) {
         case "robots":
-            _car.art      = Spr_Robot_Wasp;
-            _car.art_roof = [0.58, 0.30, 0.90, 0.66];
+            _car.art        = Spr_Robot_Wasp;
+            _car.art_roof   = [0.58, 0.30, 0.90, 0.66];
+            // It flies: a shadow on the sand below it, and wings beating over
+            // the thorax (the red-cored plate). The tall two-cluster wing sprite
+            // splays to either side of the body and is pivot-centred, so it beats
+            // about a fixed hinge instead of skating around.
+            _car.art_shadow      = Spr_Robot_Wasp_shadow;
+            _car.art_wings       = Spr_Robot_Was_Wings;
+            _car.art_wings_at    = [0.42, 0.46];
+            _car.art_wings_scale = 1.15;
             break;
 
         case "insects":
@@ -90,6 +108,17 @@ function faction_art(_car) {
             _car.art      = Spr_Car_Bandit;
             _car.art_roof = [0.17, 0.29, 0.62, 0.69];
             _car.art_flip = true;
+            // The four monster-truck tyres, as boxes in the painted sprite —
+            // draw_car_art rolls marching tread over each so the rig reads as
+            // moving rather than parked. Measured off the art, nose-left. The
+            // outer edges stop at the rubber, short of the spikes, so the tread
+            // doesn't crawl over the spikes on the top/bottom of each wheel.
+            _car.art_tyres = [
+                [0.055, 0.058, 0.36, 0.24],  // front-left
+                [0.63,  0.058, 0.99, 0.23],  // front-right
+                [0.08,  0.765, 0.38, 0.94],  // rear-left
+                [0.64,  0.765, 0.98, 0.94],  // rear-right
+            ];
             break;
     }
     return _car;

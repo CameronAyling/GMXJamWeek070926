@@ -13,12 +13,12 @@ combat_shake_decay(dt());
 
 if (cb.over == "" && !cb.paused) combat_update(dt());
 else if (cb.over != "") cb.over_t += dt();
-if (cb.over == "" && !cb.paused) {
-    combat_update(dt());
-    // Stepped by hand, so effects and particles freeze with the fight on pause.
-    vfx_update(dt());
-    vfx_ambient(dt());
-} else if (cb.over != "") cb.over_t += dt();
+
+// Stepped by hand, so effects and particles freeze with the fight on pause. They
+// keep advancing once the fight is over, though — otherwise the killing-blow
+// explosion freezes the instant the last enemy dies and never plays out.
+if (!cb.paused) vfx_update(dt());
+if (cb.over == "" && !cb.paused) vfx_ambient(dt());
 
 // ---------------------------------------------------------------- hover
 hover_car = -2;
